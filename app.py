@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import combinations
 import pytz
 import requests
@@ -21,14 +21,19 @@ def obter_data_brasilia():
     agora_bsb = datetime.now(FUSO_BRASILIA)
     return agora_bsb.strftime("%Y-%m-%d")
 
-def formatar_horario_brasilia(iso_timestamp):
-    """Converte o horário UTC da partida para o horário de Brasília (HH:MM)."""
+def converter_para_datetime_bsb(iso_timestamp):
+    """Converte o timestamp ISO da API para objeto datetime no horário de Brasília."""
     try:
         data_utc = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
-        data_bsb = data_utc.astimezone(FUSO_BRASILIA)
-        return data_bsb.strftime("%H:%M")
+        return data_utc.astimezone(FUSO_BRASILIA)
     except Exception:
-        return "--:--"
+        return None
+
+def formatar_horario_brasilia(dt_bsb):
+    """Formata o horário para HH:MM."""
+    if dt_bsb:
+        return dt_bsb.strftime("%H:%M")
+    return "--:--"
 
 def estimar_probabilidade_over_1_5(media_pro_casa, media_contra_fora, media_pro_fora, media_contra_casa):
     """Calcula a expectativa de gols e a probabilidade de Over 1.5."""
@@ -50,10 +55,10 @@ def estimar_probabilidade_over_1_5(media_pro_casa, media_contra_fora, media_pro_
 def obter_jogos_reserva():
     """Lista de segurança para preencher partidas ausentes."""
     candidatos = [
-        {"casa": "PSV Eindhoven", "fora": "Ajax", "hora": "11:30", "pro_casa": 2.6, "contra_fora": 1.3, "pro_fora": 1.7, "contra_casa": 1.2, "odd": 1.22},
-        {"casa": "Manchester City", "fora": "Tottenham", "hora": "14:00", "pro_casa": 2.5, "contra_fora": 1.5, "pro_fora": 1.6, "contra_casa": 1.0, "odd": 1.28},
-        {"casa": "Bayern München", "fora": "Bayer Leverkusen", "hora": "16:30", "pro_casa": 2.8, "contra_fora": 1.4, "pro_fora": 1.9, "contra_casa": 1.1, "odd": 1.25},
-        {"casa": "Real Madrid", "fora": "Villarreal", "hora": "17:00", "pro_casa": 2.2, "contra_fora": 1.2, "pro_fora": 1.4, "contra_casa": 0.9, "odd": 1.30}
+        {"casa": "PSV Eindhoven", "fora": "Ajax", "hora": "15:30", "pro_casa": 2.6, "contra_fora": 1.3, "pro_fora": 1.7, "contra_casa": 1.2, "odd": 1.22},
+        {"casa": "Manchester City", "fora": "Tottenham", "hora": "17:00", "pro_casa": 2.5, "contra_fora": 1.5, "pro_fora": 1.6, "contra_casa": 1.0, "odd": 1.28},
+        {"casa": "Bayern München", "fora": "Bayer Leverkusen", "hora": "18:30", "pro_casa": 2.8, "contra_fora": 1.4, "pro_fora": 1.9, "contra_casa": 1.1, "odd": 1.25},
+        {"casa": "Real Madrid", "fora": "Villarreal", "hora": "20:00", "pro_casa": 2.2, "contra_fora": 1.2, "pro_fora": 1.4, "contra_casa": 0.9, "odd": 1.30}
     ]
     reserva = []
     for j in candidatos:
@@ -110,30 +115,31 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
     }
 
 def buscar_e_filtrar_jogos(data_pesquisa):
-    # Endpoint correto da API-Sports oficial (sem duplicar v3)
     url = f"https://{API_HOST}/fixtures"
-    params = {"date": data_pesquisa}
+    # status NS = Not Started
+    params = {"date": data_pesquisa, "status": "NS"}
 
     jogos_reais = []
-
-    print(f"--> [DEBUG] Buscando jogos para a data: {data_pesquisa} | API_KEY presente: {bool(API_KEY)}")
+    agora_bsb = datetime.now(FUSO_BRASILIA)
+    # Define o limite mínimo: pelo menos 2 horas de folga a partir de agora
+    horario_minimo = agora_bsb + timedelta(hours=2)
 
     if API_KEY and API_KEY != "SUA_CHAVE_AQUI":
         try:
             response = requests.get(url, headers=HEADERS, params=params, timeout=12)
             retorno_json = response.json()
             dados = retorno_json.get("response", [])
-            erros = retorno_json.get("errors", {})
-
-            print(f"--> [DEBUG] Resposta da API: {len(dados)} jogos retornados. Erros: {erros}")
 
             for match in dados:
-                status = match["fixture"]["status"]["short"]
-                # Apenas jogos agendados ou ao vivo
-                if status not in ["NS", "1H", "2H", "HT"]:
+                dt_jogo_bsb = converter_para_datetime_bsb(match["fixture"]["date"])
+                if not dt_jogo_bsb:
                     continue
 
-                hora_bsb = formatar_horario_brasilia(match["fixture"]["date"])
+                # Descarta qualquer partida que comece antes de 2 horas a contar de agora
+                if dt_jogo_bsb < horario_minimo:
+                    continue
+
+                hora_bsb = formatar_horario_brasilia(dt_jogo_bsb)
                 time_casa = match["teams"]["home"]["name"]
                 time_fora = match["teams"]["away"]["name"]
 
@@ -142,6 +148,7 @@ def buscar_e_filtrar_jogos(data_pesquisa):
                     "casa": time_casa,
                     "fora": time_fora,
                     "horario_brasilia": hora_bsb,
+                    "datetime_bsb": dt_jogo_bsb,
                     "gols_esperados": exp_gols,
                     "probabilidade": prob,
                     "odd": 1.30,
@@ -151,9 +158,10 @@ def buscar_e_filtrar_jogos(data_pesquisa):
                 if len(jogos_reais) >= 4:
                     break
         except Exception as e:
-            print(f"--> [DEBUG] Exceção ao conectar à API: {e}")
+            print(f"--> [DEBUG] Erro ao buscar jogos pré-live: {e}")
             jogos_reais = []
 
+    # Lógica híbrida: completa com reserva apenas se faltar para fechar 4
     total_reais = len(jogos_reais)
     if total_reais >= 4:
         resultado = jogos_reais[:4]
