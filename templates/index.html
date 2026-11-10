@@ -3,34 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top 4 Over 1.5 - Sistema de Apostas</title>
+    <title>Radar Over 1.5 - Sistema 2/4 e 3/4</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        h1, h2 { color: #38bdf8; }
-        .meta-header { background: #1e293b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #38bdf8; }
-        .grid-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 960px; margin: 0 auto; }
+        h1, h2 { color: #38bdf8; margin-bottom: 8px; }
+        .meta-header { background: #1e293b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #38bdf8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .btn-copiar { background: #0284c7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-copiar:hover { background: #0369a1; }
+        .grid-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 30px; }
         .card-jogo { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; }
-        .tag-rotulo { font-size: 0.8rem; background: #0284c7; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-        .horario { font-size: 0.85rem; color: #94a3b8; margin-top: 6px; }
-        .prob { font-size: 1.1rem; color: #4ade80; font-weight: bold; margin-top: 8px; }
+        .tag-rotulo { font-size: 0.8rem; background: #0284c7; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .horario { font-size: 0.85rem; color: #94a3b8; margin-top: 6px; font-weight: 500; }
+        .prob { font-size: 1.15rem; color: #4ade80; font-weight: bold; margin-top: 8px; }
+        .calculadora-box { background: #1e293b; border: 1px solid #38bdf8; padding: 18px; border-radius: 8px; margin-bottom: 28px; }
+        .calculadora-box label { font-size: 1rem; font-weight: bold; color: #f8fafc; margin-right: 12px; }
+        .input-moeda { background: #0f172a; border: 1px solid #475569; color: #4ade80; font-size: 1.1rem; font-weight: bold; padding: 8px 12px; border-radius: 6px; width: 120px; }
         .secao-sistema { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
         th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; font-size: 0.95rem; }
         th { color: #94a3b8; }
         .odd-destaque { color: #fbbf24; font-weight: bold; }
+        .retorno-destaque { color: #4ade80; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎯 Radar Over 1.5 Gols</h1>
         <div class="meta-header">
-            <strong>Data de Referência:</strong> {{ data_brasilia }} &nbsp;|&nbsp;
-            <strong>Fuso:</strong> Horário de Brasília (BRT) &nbsp;|&nbsp;
-            <strong>Critério:</strong> Top 4 Partidas Filtradas
+            <div>
+                <strong>Data:</strong> {{ data_brasilia }} &nbsp;|&nbsp;
+                <strong>Fuso:</strong> Horário de Brasília &nbsp;|&nbsp;
+                <strong>Ordenação:</strong> Cronológica
+            </div>
+            <button class="btn-copiar" onclick="copiarBilhetes()">📋 Copiar Jogos e Apostas</button>
         </div>
 
-        <h2>Os 4 Jogos Selecionados</h2>
+        <h2>Os 4 Jogos do Dia (Em Ordem Cronológica)</h2>
         <div class="grid-jogos">
             {% for jogo in jogos %}
             <div class="card-jogo">
@@ -43,15 +52,26 @@
             {% endfor %}
         </div>
 
+        <!-- Calculadora de Banca -->
+        <div class="calculadora-box">
+            <label for="valorTotal">💰 Investimento Total da Aposta (R$):</label>
+            <input type="number" id="valorTotal" class="input-moeda" value="60" min="1" step="1" oninput="atualizarCalculos()">
+            <span style="color: #94a3b8; font-size: 0.85rem; margin-left: 10px;">(Atualiza automaticamente o retorno por bilhete)</span>
+        </div>
+
+        <!-- Sistema 2/4 -->
         <div class="secao-sistema">
             <h2>Sistema 2/4 (6 Duplas)</h2>
-            <p style="color: #94a3b8; font-size: 0.9rem;">Se 2 jogos baterem Over 1.5, a respectiva dupla é vencedora.</p>
+            <p style="color: #94a3b8; font-size: 0.9rem;">
+                Valor por dupla: <strong id="valorPorDupla" style="color: #f8fafc;">R$ 10,00</strong> (Dividido pelas 6 combinações)
+            </p>
             <table>
                 <thead>
                     <tr>
                         <th>Código</th>
                         <th>Combinação</th>
-                        <th>Odd Acumulada</th>
+                        <th>Odd</th>
+                        <th>Retorno Est. (R$)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -60,21 +80,26 @@
                         <td><strong>{{ item.rotulos }}</strong></td>
                         <td>{{ item.jogos }}</td>
                         <td class="odd-destaque">{{ "%.2f"|format(item.odd_total) }}</td>
+                        <td class="retorno-destaque retorno-dupla" data-odd="{{ item.odd_total }}">R$ 0,00</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
+        <!-- Sistema 3/4 -->
         <div class="secao-sistema">
             <h2>Sistema 3/4 (4 Triplas)</h2>
-            <p style="color: #94a3b8; font-size: 0.9rem;">Se 3 jogos baterem Over 1.5, as trincas correspondentes são vencedoras.</p>
+            <p style="color: #94a3b8; font-size: 0.9rem;">
+                Valor por tripla: <strong id="valorPorTripla" style="color: #f8fafc;">R$ 15,00</strong> (Dividido pelas 4 combinações)
+            </p>
             <table>
                 <thead>
                     <tr>
                         <th>Código</th>
                         <th>Combinação</th>
-                        <th>Odd Acumulada</th>
+                        <th>Odd</th>
+                        <th>Retorno Est. (R$)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -83,11 +108,50 @@
                         <td><strong>{{ item.rotulos }}</strong></td>
                         <td>{{ item.jogos }}</td>
                         <td class="odd-destaque">{{ "%.2f"|format(item.odd_total) }}</td>
+                        <td class="retorno-destaque retorno-tripla" data-odd="{{ item.odd_total }}">R$ 0,00</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
+    <script>
+        function atualizarCalculos() {
+            const inputVal = parseFloat(document.getElementById('valorTotal').value) || 0;
+            
+            // Sistema 2/4 (6 duplas)
+            const valorDupla = inputVal / 6;
+            document.getElementById('valorPorDupla').innerText = "R$ " + valorDupla.toFixed(2);
+            document.querySelectorAll('.retorno-dupla').forEach(td => {
+                const odd = parseFloat(td.getAttribute('data-odd'));
+                td.innerText = "R$ " + (valorDupla * odd).toFixed(2);
+            });
+
+            // Sistema 3/4 (4 triplas)
+            const valorTripla = inputVal / 4;
+            document.getElementById('valorPorTripla').innerText = "R$ " + valorTripla.toFixed(2);
+            document.querySelectorAll('.retorno-tripla').forEach(td => {
+                const odd = parseFloat(td.getAttribute('data-odd'));
+                td.innerText = "R$ " + (valorTripla * odd).toFixed(2);
+            });
+        }
+
+        function copiarBilhetes() {
+            let texto = "🎯 TOP 4 JOGOS - OVER 1.5 GOLS (Horário de Brasília)\n\n";
+            document.querySelectorAll('.card-jogo').forEach((card, idx) => {
+                const titulo = card.querySelector('div:nth-child(2)').innerText;
+                const hora = card.querySelector('.horario').innerText;
+                texto += `J${idx+1}: ${titulo} - ${hora}\n`;
+            });
+            texto += "\n📌 Acesse o painel para conferir as 6 duplas (2/4) e 4 triplas (3/4)!";
+            navigator.clipboard.writeText(texto).then(() => {
+                alert("Jogos e bilhetes copiados para a área de transferência com sucesso!");
+            });
+        }
+
+        // Executa ao carregar a página
+        atualizarCalculos();
+    </script>
 </body>
 </html>
