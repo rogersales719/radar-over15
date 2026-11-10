@@ -19,18 +19,6 @@ FUSO_BRASILIA = pytz.timezone("America/Sao_Paulo")
 def obter_data_brasilia():
     return datetime.now(FUSO_BRASILIA).strftime("%Y-%m-%d")
 
-def converter_para_datetime_bsb(iso_timestamp):
-    try:
-        data_utc = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
-        return data_utc.astimezone(FUSO_BRASILIA)
-    except Exception:
-        return None
-
-def formatar_horario_brasilia(dt_bsb):
-    if dt_bsb:
-        return dt_bsb.strftime("%H:%M")
-    return "--:--"
-
 def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
     if len(top_4_jogos) < 4:
         return {"sistema_2_4": [], "sistema_3_4": []}
@@ -69,7 +57,11 @@ def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
 
 def buscar_partidas_do_dia(data_pesquisa):
     url = f"https://{API_HOST}/fixtures"
-    params = {"date": data_pesquisa}
+    # Pede à API-Sports diretamente os dados no fuso de Brasília!
+    params = {
+        "date": data_pesquisa,
+        "timezone": "America/Sao_Paulo"
+    }
 
     candidatos_reais = []
     agora_bsb = datetime.now(FUSO_BRASILIA)
@@ -78,26 +70,35 @@ def buscar_partidas_do_dia(data_pesquisa):
         try:
             response = requests.get(url, headers=HEADERS, params=params, timeout=15)
             dados = response.json().get("response", [])
-            print(f"--> [DEBUG] Total fixtures API recebidos: {len(dados)}")
+            print(f"--> [DEBUG] Total fixtures API hoje: {len(dados)}")
 
             for match in dados:
-                dt_bsb = converter_para_datetime_bsb(match["fixture"]["date"])
-                if not dt_bsb:
-                    continue
-
-                status_short = match.get("fixture", {}).get("status", {}).get("short", "")
+                fixture_info = match.get("fixture", {})
+                data_str = fixture_info.get("date", "")  # Vem no fuso de SP
                 
-                # Aceita apenas partidas a partir do meio-dia que ainda não iniciaram ou estão agendadas
-                if dt_bsb.hour < 12 or status_short not in ["NS", "TBD"]:
+                # Extrai horário HH:MM
+                try:
+                    dt_jogo = datetime.fromisoformat(data_str)
+                    hora_jogo = dt_jogo.hour
+                    hora_formatada = dt_jogo.strftime("%H:%M")
+                except Exception:
                     continue
 
-                hora_formatada = formatar_horario_brasilia(dt_bsb)
-                time_casa = match["teams"]["home"]["name"]
-                time_fora = match["teams"]["away"]["name"]
+                # Premissa: jogos a partir das 12:00 de Brasília
+                if hora_jogo < 12:
+                    continue
+
+                status_short = fixture_info.get("status", {}).get("short", "")
+                # Ignora apenas partidas já finalizadas ou canceladas
+                if status_short in ["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"]:
+                    continue
+
+                time_casa = match.get("teams", {}).get("home", {}).get("name", "Casa")
+                time_fora = match.get("teams", {}).get("away", {}).get("name", "Fora")
                 pais = match.get("league", {}).get("country", "Mundo")
                 liga = match.get("league", {}).get("name", "Competição")
                 bandeira = match.get("league", {}).get("flag", "")
-                estadio = match.get("fixture", {}).get("venue", {}).get("name") or "Local a definir"
+                estadio = fixture_info.get("venue", {}).get("name") or "Local a definir"
 
                 candidatos_reais.append({
                     "casa": time_casa,
@@ -107,34 +108,34 @@ def buscar_partidas_do_dia(data_pesquisa):
                     "bandeira": bandeira,
                     "estadio": estadio,
                     "horario_brasilia": hora_formatada,
-                    "datetime_bsb": dt_bsb,
+                    "dt_jogo": dt_jogo,
                     "tipo": "real"
                 })
 
-            # Ordena cronologicamente
-            candidatos_reais.sort(key=lambda x: x["datetime_bsb"])
-            print(f"--> [DEBUG] Jogos válidos a partir das 12h: {len(candidatos_reais)}")
+            # Ordena pelos horários mais próximos
+            candidatos_reais.sort(key=lambda x: x["dt_jogo"])
+            print(f"--> [DEBUG] Partidas válidas a partir das 12h: {len(candidatos_reais)}")
 
         except Exception as e:
-            print(f"--> [DEBUG] Erro API-Sports: {e}")
+            print(f"--> [DEBUG] Erro de conexão com API: {e}")
             candidatos_reais = []
 
     jogos_over = []
     jogos_btts = []
 
-    # Se encontramos pelo menos 4 jogos reais, preenchemos 100% com dados reais
     if len(candidatos_reais) >= 4:
+        # 4 Jogos reais para Over 1.5
         for j in candidatos_reais[:4]:
             jogos_over.append({**j, "probabilidade": 82.0, "odd": 1.28})
 
-        # Para Ambas Marcam, usa os próximos 4 jogos reais da tarde/noite (ou os 4 primeiros se houver menos de 8)
+        # 4 Jogos reais para Ambas Marcam Sim (se tiver 8, pega os 4 seguintes; se tiver entre 4 e 7, usa a grade real)
         fonte_btts = candidatos_reais[4:8] if len(candidatos_reais) >= 8 else candidatos_reais[:4]
         for j in fonte_btts:
             jogos_btts.append({**j, "probabilidade": 76.5, "odd": 1.65})
 
         origem = "real"
     else:
-        # Fallback de reserva somente se a API estiver fora do ar ou sem chave
+        # Fallback de reserva se a API estiver indisponível
         jogos_over = [
             {"casa": "PSV Eindhoven", "fora": "Ajax", "horario_brasilia": "16:00", "pais": "Holanda", "liga": "Eredivisie", "estadio": "Philips Stadion", "odd": 1.25, "probabilidade": 84.0, "tipo": "reserva", "bandeira": ""},
             {"casa": "Manchester City", "fora": "Tottenham", "horario_brasilia": "17:30", "pais": "Inglaterra", "liga": "Premier League", "estadio": "Etihad Stadium", "odd": 1.28, "probabilidade": 82.0, "tipo": "reserva", "bandeira": ""},
