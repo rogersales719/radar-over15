@@ -7,12 +7,11 @@ from flask import Flask, render_template
 
 app = Flask(__name__)
 
-# Lê a chave da API das variáveis de ambiente do Render
+# Configuração direta com a API-Sports oficial
 API_KEY = os.environ.get("FOOTBALL_API_KEY", "SUA_CHAVE_AQUI")
-API_HOST = "api-football-v1.p.rapidapi.com"
+API_HOST = "v3.football.api-sports.io"
 HEADERS = {
-    "X-RapidAPI-Key": API_KEY,
-    "X-RapidAPI-Host": API_HOST
+    "x-apisports-key": API_KEY
 }
 
 FUSO_BRASILIA = pytz.timezone("America/Sao_Paulo")
@@ -23,7 +22,7 @@ def obter_data_brasilia():
     return agora_bsb.strftime("%Y-%m-%d")
 
 def formatar_horario_brasilia(iso_timestamp):
-    """Converte o timestamp UTC da partida para o horário de Brasília (HH:MM)."""
+    """Converte o horário UTC da partida para o horário oficial de Brasília (HH:MM)."""
     try:
         data_utc = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
         data_bsb = data_utc.astimezone(FUSO_BRASILIA)
@@ -90,15 +89,12 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
     }
 
 def buscar_e_filtrar_jogos(data_pesquisa):
-    """
-    Busca jogos do dia na API. Se a chave não estiver configurada,
-    retorna uma seleção filtrada e reordenada por horário.
-    """
+    """Busca jogos do dia na API-Sports ou gera amostra inteligente caso a chave não esteja ativa."""
     url = f"https://{API_HOST}/v3/fixtures"
     params = {"date": data_pesquisa, "status": "NS"}
 
-    # Caso ainda não tenha inserido a chave real no Render
-    if API_KEY == "SUA_CHAVE_AQUI":
+    # Se a chave ainda não estiver configurada nas variáveis de ambiente
+    if not API_KEY or API_KEY == "SUA_CHAVE_AQUI":
         jogos_candidatos = [
             {"casa": "PSV Eindhoven", "fora": "Ajax", "hora": "11:30", "pro_casa": 2.6, "contra_fora": 1.3, "pro_fora": 1.7, "contra_casa": 1.2, "odd": 1.22},
             {"casa": "Manchester City", "fora": "Tottenham", "hora": "14:00", "pro_casa": 2.5, "contra_fora": 1.5, "pro_fora": 1.6, "contra_casa": 1.0, "odd": 1.28},
@@ -119,55 +115,17 @@ def buscar_e_filtrar_jogos(data_pesquisa):
                 "odd": j["odd"]
             })
         
-        # 1. Pega os 4 de maior probabilidade
         analisados.sort(key=lambda x: x["probabilidade"], reverse=True)
         top_4 = analisados[:4]
-        
-        # 2. Ordena cronologicamente por horário de Brasília
         top_4.sort(key=lambda x: x["horario_brasilia"])
         return top_4
 
+    # Consulta real na API-Sports
     try:
-        response = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        response = requests.get(url, headers=HEADERS, params=params, timeout=12)
         dados = response.json().get("response", [])
         
-        analisados = []
-        for match in dados[:15]:
-            hora_bsb = formatar_horario_brasilia(match["fixture"]["date"])
-            time_casa = match["teams"]["home"]["name"]
-            time_fora = match["teams"]["away"]["name"]
+        if not dados:
+            return []
 
-            exp_gols, prob = estimar_probabilidade_over_1_5(1.8, 1.3, 1.4, 1.0)
-            
-            analisados.append({
-                "casa": time_casa,
-                "fora": time_fora,
-                "horario_brasilia": hora_bsb,
-                "gols_esperados": exp_gols,
-                "probabilidade": prob,
-                "odd": 1.30
-            })
-
-        analisados.sort(key=lambda x: x["probabilidade"], reverse=True)
-        top_4 = analisados[:4]
-        top_4.sort(key=lambda x: x["horario_brasilia"])
-        return top_4
-    except Exception as e:
-        print(f"Erro na requisição: {e}")
-        return []
-
-@app.route("/", methods=["GET"])
-def index():
-    data_hoje_bsb = obter_data_brasilia()
-    top_4 = buscar_e_filtrar_jogos(data_hoje_bsb)
-    sistemas = gerar_sistemas_apostas(top_4)
-
-    return render_template(
-        "index.html",
-        data_brasilia=data_hoje_bsb,
-        jogos=top_4,
-        sistemas=sistemas
-    )
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+        analisados =
