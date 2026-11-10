@@ -17,8 +17,7 @@ HEADERS = {
 FUSO_BRASILIA = pytz.timezone("America/Sao_Paulo")
 
 def obter_data_brasilia():
-    agora_bsb = datetime.now(FUSO_BRASILIA)
-    return agora_bsb.strftime("%Y-%m-%d")
+    return datetime.now(FUSO_BRASILIA).strftime("%Y-%m-%d")
 
 def converter_para_datetime_bsb(iso_timestamp):
     try:
@@ -72,23 +71,24 @@ def buscar_partidas_do_dia(data_pesquisa):
     url = f"https://{API_HOST}/fixtures"
     params = {"date": data_pesquisa}
 
-    jogos_reais = []
-    # Premissa: Jogos programados a partir do meio-dia (12:00) horário de Brasília
-    hora_corte = 12
+    candidatos_reais = []
+    agora_bsb = datetime.now(FUSO_BRASILIA)
 
     if API_KEY and API_KEY != "SUA_CHAVE_AQUI":
         try:
             response = requests.get(url, headers=HEADERS, params=params, timeout=15)
             dados = response.json().get("response", [])
-            print(f"--> [DEBUG] Total fixtures API hoje: {len(dados)}")
+            print(f"--> [DEBUG] Total fixtures API recebidos: {len(dados)}")
 
             for match in dados:
                 dt_bsb = converter_para_datetime_bsb(match["fixture"]["date"])
                 if not dt_bsb:
                     continue
 
-                # Filtra apenas jogos que acontecem a partir de 12:00 de Brasília
-                if dt_bsb.hour < hora_corte:
+                status_short = match.get("fixture", {}).get("status", {}).get("short", "")
+                
+                # Aceita apenas partidas a partir do meio-dia que ainda não iniciaram ou estão agendadas
+                if dt_bsb.hour < 12 or status_short not in ["NS", "TBD"]:
                     continue
 
                 hora_formatada = formatar_horario_brasilia(dt_bsb)
@@ -99,7 +99,7 @@ def buscar_partidas_do_dia(data_pesquisa):
                 bandeira = match.get("league", {}).get("flag", "")
                 estadio = match.get("fixture", {}).get("venue", {}).get("name") or "Local a definir"
 
-                jogos_reais.append({
+                candidatos_reais.append({
                     "casa": time_casa,
                     "fora": time_fora,
                     "pais": pais,
@@ -111,43 +111,44 @@ def buscar_partidas_do_dia(data_pesquisa):
                     "tipo": "real"
                 })
 
-            # Ordena por horário crescente
-            jogos_reais.sort(key=lambda x: x["datetime_bsb"])
-            print(f"--> [DEBUG] Partidas a partir de 12:00 BSB: {len(jogos_reais)}")
+            # Ordena cronologicamente
+            candidatos_reais.sort(key=lambda x: x["datetime_bsb"])
+            print(f"--> [DEBUG] Jogos válidos a partir das 12h: {len(candidatos_reais)}")
 
         except Exception as e:
             print(f"--> [DEBUG] Erro API-Sports: {e}")
-            jogos_reais = []
+            candidatos_reais = []
 
-    # Separação independente dos dois mercados usando os jogos reais
     jogos_over = []
     jogos_btts = []
 
-    if len(jogos_reais) >= 4:
-        # 4 jogos para Over 1.5
-        for j in jogos_reais[:4]:
+    # Se encontramos pelo menos 4 jogos reais, preenchemos 100% com dados reais
+    if len(candidatos_reais) >= 4:
+        for j in candidatos_reais[:4]:
             jogos_over.append({**j, "probabilidade": 82.0, "odd": 1.28})
 
-        # 4 jogos para Ambas Marcam Sim (pega os 4 seguintes da tarde/noite)
-        fonte_btts = jogos_reais[4:8] if len(jogos_reais) >= 8 else jogos_reais[:4]
+        # Para Ambas Marcam, usa os próximos 4 jogos reais da tarde/noite (ou os 4 primeiros se houver menos de 8)
+        fonte_btts = candidatos_reais[4:8] if len(candidatos_reais) >= 8 else candidatos_reais[:4]
         for j in fonte_btts:
-            jogos_btts.append({**j, "probabilidade": 77.0, "odd": 1.65})
+            jogos_btts.append({**j, "probabilidade": 76.5, "odd": 1.65})
+
+        origem = "real"
     else:
-        # Fallback de segurança apenas se a API estiver fora do ar
+        # Fallback de reserva somente se a API estiver fora do ar ou sem chave
         jogos_over = [
-            {"casa": "Häcken W", "fora": "Chelsea W", "hora": "14:45", "pais": "World", "liga": "Champions League W", "estadio": "Arena", "odd": 1.25, "prob": 84.0, "tipo": "reserva"},
-            {"casa": "Real Madrid W", "fora": "Paris FC W", "hora": "14:45", "pais": "World", "liga": "Champions League W", "estadio": "Ciudad Real Madrid", "odd": 1.28, "prob": 82.0, "tipo": "reserva"},
-            {"casa": "Midtjylland W", "fora": "Odense Q W", "hora": "15:00", "pais": "Denmark", "liga": "Kvindeliga", "estadio": "Local", "odd": 1.22, "prob": 86.0, "tipo": "reserva"},
-            {"casa": "Wolfsburg W", "fora": "Lyon W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "AOK Stadion", "odd": 1.30, "prob": 80.0, "tipo": "reserva"}
+            {"casa": "PSV Eindhoven", "fora": "Ajax", "horario_brasilia": "16:00", "pais": "Holanda", "liga": "Eredivisie", "estadio": "Philips Stadion", "odd": 1.25, "probabilidade": 84.0, "tipo": "reserva", "bandeira": ""},
+            {"casa": "Manchester City", "fora": "Tottenham", "horario_brasilia": "17:30", "pais": "Inglaterra", "liga": "Premier League", "estadio": "Etihad Stadium", "odd": 1.28, "probabilidade": 82.0, "tipo": "reserva", "bandeira": ""},
+            {"casa": "Bayern München", "fora": "Bayer Leverkusen", "horario_brasilia": "18:45", "pais": "Alemanha", "liga": "Bundesliga", "estadio": "Allianz Arena", "odd": 1.22, "probabilidade": 86.0, "tipo": "reserva", "bandeira": ""},
+            {"casa": "Real Madrid", "fora": "Villarreal", "horario_brasilia": "20:00", "pais": "Espanha", "liga": "La Liga", "estadio": "Santiago Bernabéu", "odd": 1.30, "probabilidade": 80.0, "tipo": "reserva", "bandeira": ""}
         ]
         jogos_btts = [
-            {"casa": "Arsenal W", "fora": "Juventus W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "Emirates Stadium", "odd": 1.68, "prob": 78.0, "tipo": "reserva"},
-            {"casa": "Bayern W", "fora": "Valerenga W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "FC Bayern Campus", "odd": 1.62, "prob": 81.0, "tipo": "reserva"},
-            {"casa": "Barcelona W", "fora": "St. Pölten W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "Johan Cruyff", "odd": 1.70, "prob": 76.0, "tipo": "reserva"},
-            {"casa": "Man City W", "fora": "Hammarby W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "Academy Stadium", "odd": 1.65, "prob": 79.0, "tipo": "reserva"}
+            {"casa": "Arsenal", "fora": "Liverpool", "horario_brasilia": "16:00", "pais": "Inglaterra", "liga": "Premier League", "estadio": "Emirates Stadium", "odd": 1.68, "probabilidade": 78.0, "tipo": "reserva", "bandeira": ""},
+            {"casa": "Eintracht Frankfurt", "fora": "Borussia Dortmund", "horario_brasilia": "17:30", "pais": "Alemanha", "liga": "Bundesliga", "estadio": "Deutsche Bank Park", "odd": 1.62, "probabilidade": 81.0, "tipo": "reserva", "bandeira": ""},
+            {"casa": "Atalanta", "fora": "Napoli", "horario_brasilia": "19:00", "pais": "Itália", "liga": "Serie A", "estadio": "Gewiss Stadium", "odd": 1.70, "probabilidade": 76.0, "tipo": "reserva", "bandeira": ""},
+            {"casa": "Benfica", "fora": "Sporting CP", "horario_brasilia": "20:30", "pais": "Portugal", "liga": "Liga Portugal", "estadio": "Estádio da Luz", "odd": 1.65, "probabilidade": 79.0, "tipo": "reserva", "bandeira": ""}
         ]
+        origem = "simulado"
 
-    origem = "real" if len(jogos_reais) >= 4 else "reserva"
     return jogos_over, jogos_btts, origem
 
 @app.route("/", methods=["GET"])
