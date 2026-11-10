@@ -12,17 +12,19 @@
         .meta-header { background: #1e293b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #38bdf8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .badge-status { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
         .badge-real { background: #166534; color: #4ade80; }
-        .badge-hibrido { background: #0369a1; color: #7dd3fc; }
+        .badge-simulado { background: #854d0e; color: #fef08a; }
         .btn-copiar { background: #0284c7; color: #fff; border: none; padding: 9px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-copiar:hover { background: #0369a1; }
         
-        /* Grid de Jogos */
         .grid-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .card-jogo { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; display: flex; flex-direction: column; justify-content: space-between; }
         .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .tag-rotulo { font-size: 0.8rem; background: #0284c7; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
         .tag-rotulo-btts { background: #d97706; }
-        .tag-tipo { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; background: #166534; color: #4ade80; }
+        
+        .tag-tipo-real { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; background: #166534; color: #4ade80; }
+        .tag-tipo-reserva { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; background: #854d0e; color: #fef08a; }
+
         .liga-info { font-size: 0.78rem; color: #38bdf8; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
         .liga-flag { width: 16px; height: 11px; object-fit: cover; border-radius: 2px; }
         .times-titulo { font-size: 1.05rem; font-weight: 700; line-height: 1.3; color: #ffffff; }
@@ -30,7 +32,6 @@
         .horario { font-size: 0.85rem; color: #cbd5e1; margin-top: 10px; font-weight: 500; }
         .prob { font-size: 1.15rem; color: #4ade80; font-weight: bold; margin-top: 6px; }
 
-        /* Nova Calculadora Separada */
         .box-investimento { background: #1e293b; border: 1px solid #38bdf8; padding: 20px; border-radius: 8px; margin-bottom: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         @media (max-width: 768px) { .box-investimento { grid-template-columns: 1fr; } }
         .col-calc { background: #0f172a; padding: 16px; border-radius: 6px; border: 1px solid #334155; }
@@ -40,7 +41,6 @@
         .total-box { font-size: 0.95rem; color: #94a3b8; margin-top: 8px; border-top: 1px solid #334155; padding-top: 8px; }
         .total-box strong { color: #f8fafc; font-size: 1.1rem; }
 
-        /* Tabelas */
         .secao-sistema { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 28px; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
         th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; font-size: 0.92rem; }
@@ -56,10 +56,10 @@
             <div>
                 <strong>Data:</strong> {{ data_brasilia }} &nbsp;|&nbsp;
                 <strong>Fuso:</strong> Horário de Brasília &nbsp;|&nbsp;
-                {% if 'real' == origem %}
+                {% if origem == 'real' %}
                     <span class="badge-status badge-real">🟢 100% PRÉ-LIVE (AO VIVO)</span>
                 {% else %}
-                    <span class="badge-status badge-hibrido">🔵 MODO HÍBRIDO</span>
+                    <span class="badge-status badge-simulado">🟡 MODO DEMO (RESERVA)</span>
                 {% endif %}
             </div>
             <button class="btn-copiar" onclick="copiarBilhetes()">📋 Copiar Todos os Jogos</button>
@@ -67,7 +67,6 @@
 
         <!-- CALCULADORA POR COMBINAÇÃO (SEPARADA) -->
         <div class="box-investimento">
-            <!-- Calculadora Duplas -->
             <div class="col-calc">
                 <h3>👥 Sistema 2/4 (6 Duplas)</h3>
                 <div class="calc-linha">
@@ -79,7 +78,6 @@
                 </div>
             </div>
 
-            <!-- Calculadora Triplas -->
             <div class="col-calc">
                 <h3>🎯 Sistema 3/4 (4 Triplas)</h3>
                 <div class="calc-linha">
@@ -92,15 +90,19 @@
             </div>
         </div>
 
-        <!-- ================= SEÇÃO OVER 1.5 ================= -->
-        <h2 style="color: #38bdf8;">⚽ MERCADO 1: Over 1.5 Gols (Mín. 2h Antecedência)</h2>
+        <!-- SEÇÃO OVER 1.5 -->
+        <h2 style="color: #38bdf8;">⚽ MERCADO 1: Over 1.5 Gols (Mín. Folga Pré-Live)</h2>
         <div class="grid-jogos">
             {% for jogo in jogos_over %}
             <div class="card-jogo">
                 <div>
                     <div class="card-top">
                         <span class="tag-rotulo">OV{{ loop.index }}</span>
-                        <span class="tag-tipo">PRÉ-LIVE</span>
+                        {% if jogo.tipo == 'real' %}
+                            <span class="tag-tipo-real">AO VIVO</span>
+                        {% else %}
+                            <span class="tag-tipo-reserva">DEMO/RESERVA</span>
+                        {% endif %}
                     </div>
                     <div class="liga-info">
                         {% if jogo.bandeira %}<img src="{{ jogo.bandeira }}" class="liga-flag">{% endif %}
@@ -147,7 +149,7 @@
             </table>
         </div>
 
-        <!-- ================= SEÇÃO AMBAS MARCAM SIM ================= -->
+        <!-- SEÇÃO AMBAS MARCAM SIM -->
         <h2 style="color: #fbbf24;">⚡ MERCADO 2: Ambas Marcam Sim (BTTS)</h2>
         <div class="grid-jogos">
             {% for jogo in jogos_btts %}
@@ -155,7 +157,11 @@
                 <div>
                     <div class="card-top">
                         <span class="tag-rotulo tag-rotulo-btts">AM{{ loop.index }}</span>
-                        <span class="tag-tipo">PRÉ-LIVE</span>
+                        {% if jogo.tipo == 'real' %}
+                            <span class="tag-tipo-real">AO VIVO</span>
+                        {% else %}
+                            <span class="tag-tipo-reserva">DEMO/RESERVA</span>
+                        {% endif %}
                     </div>
                     <div class="liga-info" style="color: #fbbf24;">
                         {% if jogo.bandeira %}<img src="{{ jogo.bandeira }}" class="liga-flag">{% endif %}
@@ -209,15 +215,12 @@
             const vDupla = parseFloat(document.getElementById('valorDupla').value) || 0;
             const vTripla = parseFloat(document.getElementById('valorTripla').value) || 0;
 
-            // Total gasto em duplas (6 combinações)
             const totalD = vDupla * 6;
             document.getElementById('totalDuplas').innerText = "R$ " + totalD.toFixed(2);
 
-            // Total gasto em triplas (4 combinações)
             const totalT = vTripla * 4;
             document.getElementById('totalTriplas').innerText = "R$ " + totalT.toFixed(2);
 
-            // Atualiza retornos estimados nas tabelas
             document.querySelectorAll('.retorno-dupla').forEach(td => {
                 const odd = parseFloat(td.getAttribute('data-odd'));
                 td.innerText = "R$ " + (vDupla * odd).toFixed(2);
