@@ -11,12 +11,16 @@
         .meta-header { background: #1e293b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #38bdf8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .badge-status { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
         .badge-real { background: #166534; color: #4ade80; }
+        .badge-hibrido { background: #0369a1; color: #7dd3fc; }
         .badge-simulado { background: #854d0e; color: #fef08a; }
         .btn-copiar { background: #0284c7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-copiar:hover { background: #0369a1; }
         .grid-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 30px; }
-        .card-jogo { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; }
+        .card-jogo { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; position: relative; }
         .tag-rotulo { font-size: 0.8rem; background: #0284c7; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .tag-tipo { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; float: right; text-transform: uppercase; }
+        .tipo-real { background: #166534; color: #4ade80; }
+        .tipo-reserva { background: #854d0e; color: #fef08a; }
         .horario { font-size: 0.85rem; color: #94a3b8; margin-top: 6px; font-weight: 500; }
         .prob { font-size: 1.15rem; color: #4ade80; font-weight: bold; margin-top: 8px; }
         .calculadora-box { background: #1e293b; border: 1px solid #38bdf8; padding: 18px; border-radius: 8px; margin-bottom: 28px; }
@@ -35,12 +39,14 @@
         <h1>🎯 Radar Over 1.5 Gols</h1>
         <div class="meta-header">
             <div>
-                <strong>Data:</strong> {{ data_brasilia }}  | 
-                <strong>Fuso:</strong> Horário de Brasília  | 
-                {% if origem == 'real' %}
-                    <span class="badge-status badge-real">🟢 DADOS AO VIVO (API-SPORTS)</span>
+                <strong>Data:</strong> {{ data_brasilia }} &nbsp;|&nbsp;
+                <strong>Fuso:</strong> Horário de Brasília &nbsp;|&nbsp;
+                {% if 'real' == origem %}
+                    <span class="badge-status badge-real">🟢 100% AO VIVO</span>
+                {% elif 'hibrido' in origem %}
+                    <span class="badge-status badge-hibrido">🔵 MODO HÍBRIDO ({{ origem }})</span>
                 {% else %}
-                    <span class="badge-status badge-simulado">🟡 MODO DEMONSTRAÇÃO (RESERVA)</span>
+                    <span class="badge-status badge-simulado">🟡 MODO DEMO (RESERVA)</span>
                 {% endif %}
             </div>
             <button class="btn-copiar" onclick="copiarBilhetes()">📋 Copiar Jogos e Apostas</button>
@@ -51,6 +57,11 @@
             {% for jogo in jogos %}
             <div class="card-jogo">
                 <span class="tag-rotulo">J{{ loop.index }}</span>
+                {% if jogo.tipo == 'real' %}
+                    <span class="tag-tipo tipo-real">AO VIVO</span>
+                {% else %}
+                    <span class="tag-tipo tipo-reserva">RESERVA</span>
+                {% endif %}
                 <div style="font-weight: 600; margin-top: 8px;">{{ jogo.casa }} x {{ jogo.fora }}</div>
                 <div class="horario">🕒 {{ jogo.horario_brasilia }} (Brasília)</div>
                 <div class="prob">{{ jogo.probabilidade }}% chance</div>
@@ -147,7 +158,7 @@
         function copiarBilhetes() {
             let texto = "🎯 TOP 4 JOGOS - OVER 1.5 GOLS (Horário de Brasília)\n\n";
             document.querySelectorAll('.card-jogo').forEach((card, idx) => {
-                const titulo = card.querySelector('div:nth-child(2)').innerText;
+                const titulo = card.querySelector('div:nth-child(3)').innerText;
                 const hora = card.querySelector('.horario').innerText;
                 texto += `J${idx+1}: ${titulo} - ${hora}\n`;
             });
