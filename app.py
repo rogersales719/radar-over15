@@ -31,7 +31,7 @@ def formatar_horario_brasilia(iso_timestamp):
         return "--:--"
 
 def estimar_probabilidade_over_1_5(media_pro_casa, media_contra_fora, media_pro_fora, media_contra_casa):
-    """Calcula a expectativa de golos e a probabilidade de Over 1.5."""
+    """Calcula a expectativa de gols e a probabilidade de Over 1.5."""
     expectativa_mandante = (media_pro_casa + media_contra_fora) / 2.0
     expectativa_visitante = (media_pro_fora + media_contra_casa) / 2.0
     total_esperado = expectativa_mandante + expectativa_visitante
@@ -110,17 +110,26 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
     }
 
 def buscar_e_filtrar_jogos(data_pesquisa):
-    url = f"https://{API_HOST}/v3/fixtures"
+    # Endpoint correto da API-Sports oficial (sem duplicar v3)
+    url = f"https://{API_HOST}/fixtures"
     params = {"date": data_pesquisa}
 
     jogos_reais = []
 
+    print(f"--> [DEBUG] Buscando jogos para a data: {data_pesquisa} | API_KEY presente: {bool(API_KEY)}")
+
     if API_KEY and API_KEY != "SUA_CHAVE_AQUI":
         try:
-            response = requests.get(url, headers=HEADERS, params=params, timeout=10)
-            dados = response.json().get("response", [])
+            response = requests.get(url, headers=HEADERS, params=params, timeout=12)
+            retorno_json = response.json()
+            dados = retorno_json.get("response", [])
+            erros = retorno_json.get("errors", {})
+
+            print(f"--> [DEBUG] Resposta da API: {len(dados)} jogos retornados. Erros: {erros}")
+
             for match in dados:
                 status = match["fixture"]["status"]["short"]
+                # Apenas jogos agendados ou ao vivo
                 if status not in ["NS", "1H", "2H", "HT"]:
                     continue
 
@@ -141,10 +150,10 @@ def buscar_e_filtrar_jogos(data_pesquisa):
 
                 if len(jogos_reais) >= 4:
                     break
-        except Exception:
+        except Exception as e:
+            print(f"--> [DEBUG] Exceção ao conectar à API: {e}")
             jogos_reais = []
 
-    # Lógica Híbrida: aproveita os reais e completa com reserva
     total_reais = len(jogos_reais)
     if total_reais >= 4:
         resultado = jogos_reais[:4]
