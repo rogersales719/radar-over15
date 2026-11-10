@@ -3,32 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Radar Over 1.5 - Sistema 2/4 e 3/4</title>
+    <title>Radar Over 1.5 - Pré-Live & Sistemas</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        .container { max-width: 960px; margin: 0 auto; }
+        .container { max-width: 980px; margin: 0 auto; }
         h1, h2 { color: #38bdf8; margin-bottom: 8px; }
         .meta-header { background: #1e293b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #38bdf8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .badge-status { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
         .badge-real { background: #166534; color: #4ade80; }
         .badge-hibrido { background: #0369a1; color: #7dd3fc; }
         .badge-simulado { background: #854d0e; color: #fef08a; }
-        .btn-copiar { background: #0284c7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-copiar { background: #0284c7; color: #fff; border: none; padding: 9px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-copiar:hover { background: #0369a1; }
-        .grid-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 30px; }
-        .card-jogo { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; position: relative; }
+        .grid-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(225px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        .card-jogo { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; position: relative; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .tag-rotulo { font-size: 0.8rem; background: #0284c7; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
-        .tag-tipo { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; float: right; text-transform: uppercase; }
+        .tag-tipo { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
         .tipo-real { background: #166534; color: #4ade80; }
         .tipo-reserva { background: #854d0e; color: #fef08a; }
-        .horario { font-size: 0.85rem; color: #94a3b8; margin-top: 6px; font-weight: 500; }
-        .prob { font-size: 1.15rem; color: #4ade80; font-weight: bold; margin-top: 8px; }
+        .liga-info { font-size: 0.78rem; color: #38bdf8; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .liga-flag { width: 16px; height: 11px; object-fit: cover; border-radius: 2px; }
+        .times-titulo { font-size: 1.05rem; font-weight: 700; line-height: 1.3; color: #ffffff; }
+        .estadio-info { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+        .horario { font-size: 0.85rem; color: #cbd5e1; margin-top: 10px; font-weight: 500; }
+        .prob { font-size: 1.15rem; color: #4ade80; font-weight: bold; margin-top: 6px; }
         .calculadora-box { background: #1e293b; border: 1px solid #38bdf8; padding: 18px; border-radius: 8px; margin-bottom: 28px; }
         .calculadora-box label { font-size: 1rem; font-weight: bold; color: #f8fafc; margin-right: 12px; }
         .input-moeda { background: #0f172a; border: 1px solid #475569; color: #4ade80; font-size: 1.1rem; font-weight: bold; padding: 8px 12px; border-radius: 6px; width: 120px; }
         .secao-sistema { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; font-size: 0.95rem; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; font-size: 0.92rem; }
         th { color: #94a3b8; }
         .odd-destaque { color: #fbbf24; font-weight: bold; }
         .retorno-destaque { color: #4ade80; font-weight: bold; }
@@ -42,7 +47,7 @@
                 <strong>Data:</strong> {{ data_brasilia }} &nbsp;|&nbsp;
                 <strong>Fuso:</strong> Horário de Brasília &nbsp;|&nbsp;
                 {% if 'real' == origem %}
-                    <span class="badge-status badge-real">🟢 100% AO VIVO</span>
+                    <span class="badge-status badge-real">🟢 100% PRÉ-LIVE (AO VIVO)</span>
                 {% elif 'hibrido' in origem %}
                     <span class="badge-status badge-hibrido">🔵 MODO HÍBRIDO ({{ origem }})</span>
                 {% else %}
@@ -52,20 +57,34 @@
             <button class="btn-copiar" onclick="copiarBilhetes()">📋 Copiar Jogos e Apostas</button>
         </div>
 
-        <h2>Os 4 Jogos Selecionados (Ordem Cronológica)</h2>
+        <h2>Os 4 Jogos Selecionados (Mín. 2h de Antecedência)</h2>
         <div class="grid-jogos">
             {% for jogo in jogos %}
             <div class="card-jogo">
-                <span class="tag-rotulo">J{{ loop.index }}</span>
-                {% if jogo.tipo == 'real' %}
-                    <span class="tag-tipo tipo-real">AO VIVO</span>
-                {% else %}
-                    <span class="tag-tipo tipo-reserva">RESERVA</span>
-                {% endif %}
-                <div style="font-weight: 600; margin-top: 8px;">{{ jogo.casa }} x {{ jogo.fora }}</div>
-                <div class="horario">🕒 {{ jogo.horario_brasilia }} (Brasília)</div>
-                <div class="prob">{{ jogo.probabilidade }}% chance</div>
-                <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 4px;">Odd est.: {{ "%.2f"|format(jogo.odd) }}</div>
+                <div>
+                    <div class="card-top">
+                        <span class="tag-rotulo">J{{ loop.index }}</span>
+                        {% if jogo.tipo == 'real' %}
+                            <span class="tag-tipo tipo-real">PRÉ-LIVE</span>
+                        {% else %}
+                            <span class="tag-tipo tipo-reserva">RESERVA</span>
+                        {% endif %}
+                    </div>
+                    <div class="liga-info">
+                        {% if jogo.bandeira %}
+                            <img src="{{ jogo.bandeira }}" class="liga-flag" alt="{{ jogo.pais }}">
+                        {% endif %}
+                        <span>{{ jogo.pais }} - {{ jogo.liga }}</span>
+                    </div>
+                    <div class="times-titulo">{{ jogo.casa }} x {{ jogo.fora }}</div>
+                    <div class="estadio-info">📍 {{ jogo.estadio }}</div>
+                </div>
+
+                <div>
+                    <div class="horario">🕒 {{ jogo.horario_brasilia }} (Brasília)</div>
+                    <div class="prob">{{ jogo.probabilidade }}% chance</div>
+                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 4px;">Odd est.: {{ "%.2f"|format(jogo.odd) }}</div>
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -156,15 +175,26 @@
         }
 
         function copiarBilhetes() {
-            let texto = "🎯 TOP 4 JOGOS - OVER 1.5 GOLS (Horário de Brasília)\n\n";
+            let texto = "🎯 RADAR OVER 1.5 GOLS - JOGOS SELECIONADOS\n";
+            texto += "Fuso: Horário de Brasília | Mínimo 2h de Antecedência\n\n";
+
             document.querySelectorAll('.card-jogo').forEach((card, idx) => {
-                const titulo = card.querySelector('div:nth-child(3)').innerText;
-                const hora = card.querySelector('.horario').innerText;
-                texto += `J${idx+1}: ${titulo} - ${hora}\n`;
+                const times = card.querySelector('.times-titulo').innerText;
+                const liga = card.querySelector('.liga-info').innerText.trim();
+                const estadio = card.querySelector('.estadio-info').innerText.trim();
+                const hora = card.querySelector('.horario').innerText.trim();
+                const prob = card.querySelector('.prob').innerText.trim();
+                
+                texto += `[J${idx+1}] ${times}\n`;
+                texto += `   🏆 ${liga}\n`;
+                texto += `   ${estadio}\n`;
+                texto += `   ${hora} | ${prob}\n\n`;
             });
-            texto += "\n📌 Sistema 2/4 e 3/4 calculados no painel!";
+
+            texto += "📌 Acesse o painel para conferir o desdobramento do Sistema 2/4 e 3/4!";
+
             navigator.clipboard.writeText(texto).then(() => {
-                alert("Jogos e bilhetes copiados para a área de transferência com sucesso!");
+                alert("Jogos com País, Liga, Estádio e Horários copiados com sucesso!");
             });
         }
 
