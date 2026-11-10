@@ -7,7 +7,6 @@ from flask import Flask, render_template
 
 app = Flask(__name__)
 
-# Configuração da API-Sports oficial
 API_KEY = os.environ.get("FOOTBALL_API_KEY", "")
 API_HOST = "v3.football.api-sports.io"
 HEADERS = {
@@ -18,6 +17,18 @@ FUSO_BRASILIA = pytz.timezone("America/Sao_Paulo")
 
 def obter_data_brasilia():
     return datetime.now(FUSO_BRASILIA).strftime("%Y-%m-%d")
+
+def converter_para_datetime_bsb(iso_timestamp):
+    try:
+        data_utc = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
+        return data_utc.astimezone(FUSO_BRASILIA)
+    except Exception:
+        return None
+
+def formatar_horario_brasilia(dt_bsb):
+    if dt_bsb:
+        return dt_bsb.strftime("%H:%M")
+    return "--:--"
 
 def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
     if len(top_4_jogos) < 4:
@@ -31,7 +42,6 @@ def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
             "odd": j.get("odd", 1.30)
         })
 
-    # Sistema 2/4 (6 duplas)
     duplas = list(combinations(itens, 2))
     sistema_2_4 = []
     for combo in duplas:
@@ -42,14 +52,13 @@ def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
             "odd_total": odd_total
         })
 
-    # Sistema 3/4 (4 triplas)
     triplas = list(combinations(itens, 3))
     sistema_3_4 = []
     for combo in triplas:
         odd_total = round(combo[0]["odd"] * combo[1]["odd"] * combo[2]["odd"], 2)
         sistema_3_4.append({
             "jogos": f"{combo[0]['partida']} + {combo[1]['partida']} + {combo[2]['partida']}",
-            "rotulos": f"{combo[0]['rotulo']} + {combo[1]['rotulo']} + {combo[2]['rotulo']}",
+            "rotulos": f"{combo[0]['rotulo']} + {combo[1]['rotulo'] + ' + ' + combo[2]['rotulo']}",
             "odd_total": odd_total
         })
 
@@ -57,42 +66,38 @@ def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
 
 def buscar_partidas_do_dia(data_pesquisa):
     url = f"https://{API_HOST}/fixtures"
-    # Pede à API-Sports diretamente os dados no fuso de Brasília!
-    params = {
-        "date": data_pesquisa,
-        "timezone": "America/Sao_Paulo"
-    }
+    # Chamada limpa sem o parâmetro timezone que esvaziou a resposta
+    params = {"date": data_pesquisa}
 
     candidatos_reais = []
-    agora_bsb = datetime.now(FUSO_BRASILIA)
 
     if API_KEY and API_KEY != "SUA_CHAVE_AQUI":
         try:
             response = requests.get(url, headers=HEADERS, params=params, timeout=15)
-            dados = response.json().get("response", [])
-            print(f"--> [DEBUG] Total fixtures API hoje: {len(dados)}")
+            res_json = response.json()
+            dados = res_json.get("response", [])
+            erros = res_json.get("errors", {})
+            
+            print(f"--> [DEBUG] Resposta API: {len(dados)} jogos encontrados. Erros reportados: {erros}")
 
             for match in dados:
                 fixture_info = match.get("fixture", {})
-                data_str = fixture_info.get("date", "")  # Vem no fuso de SP
+                date_iso = fixture_info.get("date", "")
                 
-                # Extrai horário HH:MM
-                try:
-                    dt_jogo = datetime.fromisoformat(data_str)
-                    hora_jogo = dt_jogo.hour
-                    hora_formatada = dt_jogo.strftime("%H:%M")
-                except Exception:
+                dt_bsb = converter_para_datetime_bsb(date_iso)
+                if not dt_bsb:
                     continue
 
-                # Premissa: jogos a partir das 12:00 de Brasília
-                if hora_jogo < 12:
+                # Premissa: a partir das 12:00 de Brasília
+                if dt_bsb.hour < 12:
                     continue
 
                 status_short = fixture_info.get("status", {}).get("short", "")
-                # Ignora apenas partidas já finalizadas ou canceladas
+                # Apenas partidas por iniciar ou a decorrer/programadas
                 if status_short in ["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"]:
                     continue
 
+                hora_formatada = formatar_horario_brasilia(dt_bsb)
                 time_casa = match.get("teams", {}).get("home", {}).get("name", "Casa")
                 time_fora = match.get("teams", {}).get("away", {}).get("name", "Fora")
                 pais = match.get("league", {}).get("country", "Mundo")
@@ -108,34 +113,31 @@ def buscar_partidas_do_dia(data_pesquisa):
                     "bandeira": bandeira,
                     "estadio": estadio,
                     "horario_brasilia": hora_formatada,
-                    "dt_jogo": dt_jogo,
+                    "dt_jogo": dt_bsb,
                     "tipo": "real"
                 })
 
-            # Ordena pelos horários mais próximos
             candidatos_reais.sort(key=lambda x: x["dt_jogo"])
-            print(f"--> [DEBUG] Partidas válidas a partir das 12h: {len(candidatos_reais)}")
+            print(f"--> [DEBUG] Total partidas válidas filtradas: {len(candidatos_reais)}")
 
         except Exception as e:
-            print(f"--> [DEBUG] Erro de conexão com API: {e}")
+            print(f"--> [DEBUG] Exceção na chamada da API: {e}")
             candidatos_reais = []
 
     jogos_over = []
     jogos_btts = []
 
     if len(candidatos_reais) >= 4:
-        # 4 Jogos reais para Over 1.5
         for j in candidatos_reais[:4]:
             jogos_over.append({**j, "probabilidade": 82.0, "odd": 1.28})
 
-        # 4 Jogos reais para Ambas Marcam Sim (se tiver 8, pega os 4 seguintes; se tiver entre 4 e 7, usa a grade real)
         fonte_btts = candidatos_reais[4:8] if len(candidatos_reais) >= 8 else candidatos_reais[:4]
         for j in fonte_btts:
             jogos_btts.append({**j, "probabilidade": 76.5, "odd": 1.65})
 
         origem = "real"
     else:
-        # Fallback de reserva se a API estiver indisponível
+        # Reserva apenas para fallback se não houver conexão
         jogos_over = [
             {"casa": "PSV Eindhoven", "fora": "Ajax", "horario_brasilia": "16:00", "pais": "Holanda", "liga": "Eredivisie", "estadio": "Philips Stadion", "odd": 1.25, "probabilidade": 84.0, "tipo": "reserva", "bandeira": ""},
             {"casa": "Manchester City", "fora": "Tottenham", "horario_brasilia": "17:30", "pais": "Inglaterra", "liga": "Premier League", "estadio": "Etihad Stadium", "odd": 1.28, "probabilidade": 82.0, "tipo": "reserva", "bandeira": ""},
