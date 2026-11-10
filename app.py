@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from itertools import combinations
 import pytz
 import requests
@@ -32,22 +32,6 @@ def formatar_horario_brasilia(dt_bsb):
         return dt_bsb.strftime("%H:%M")
     return "--:--"
 
-def obter_jogos_reserva(mercado="over"):
-    if mercado == "over":
-        return [
-            {"casa": "PSV Eindhoven", "fora": "Ajax", "hora": "16:00", "pais": "Holanda", "liga": "Eredivisie", "estadio": "Philips Stadion", "odd": 1.25, "prob": 84.0, "tipo": "reserva"},
-            {"casa": "Manchester City", "fora": "Tottenham", "hora": "17:30", "pais": "Inglaterra", "liga": "Premier League", "estadio": "Etihad Stadium", "odd": 1.28, "prob": 82.0, "tipo": "reserva"},
-            {"casa": "Bayern München", "fora": "Bayer Leverkusen", "hora": "18:45", "pais": "Alemanha", "liga": "Bundesliga", "estadio": "Allianz Arena", "odd": 1.22, "prob": 86.0, "tipo": "reserva"},
-            {"casa": "Real Madrid", "fora": "Villarreal", "hora": "20:00", "pais": "Espanha", "liga": "La Liga", "estadio": "Santiago Bernabéu", "odd": 1.30, "prob": 80.0, "tipo": "reserva"}
-        ]
-    else:
-        return [
-            {"casa": "Arsenal", "fora": "Liverpool", "hora": "16:00", "pais": "Inglaterra", "liga": "Premier League", "estadio": "Emirates Stadium", "odd": 1.68, "prob": 78.0, "tipo": "reserva"},
-            {"casa": "Eintracht Frankfurt", "fora": "Borussia Dortmund", "hora": "17:30", "pais": "Alemanha", "liga": "Bundesliga", "estadio": "Deutsche Bank Park", "odd": 1.62, "prob": 81.0, "tipo": "reserva"},
-            {"casa": "Atalanta", "fora": "Napoli", "hora": "19:00", "pais": "Itália", "liga": "Serie A", "estadio": "Gewiss Stadium", "odd": 1.70, "prob": 76.0, "tipo": "reserva"},
-            {"casa": "Benfica", "fora": "Sporting CP", "hora": "20:30", "pais": "Portugal", "liga": "Liga Portugal", "estadio": "Estádio da Luz", "odd": 1.65, "prob": 79.0, "tipo": "reserva"}
-        ]
-
 def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
     if len(top_4_jogos) < 4:
         return {"sistema_2_4": [], "sistema_3_4": []}
@@ -60,6 +44,7 @@ def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
             "odd": j.get("odd", 1.30)
         })
 
+    # Sistema 2/4 (6 duplas)
     duplas = list(combinations(itens, 2))
     sistema_2_4 = []
     for combo in duplas:
@@ -70,6 +55,7 @@ def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
             "odd_total": odd_total
         })
 
+    # Sistema 3/4 (4 triplas)
     triplas = list(combinations(itens, 3))
     sistema_3_4 = []
     for combo in triplas:
@@ -82,31 +68,30 @@ def gerar_sistemas_apostas(top_4_jogos, prefixo="J"):
 
     return {"sistema_2_4": sistema_2_4, "sistema_3_4": sistema_3_4}
 
-def buscar_partidas_completas(data_pesquisa):
+def buscar_partidas_do_dia(data_pesquisa):
     url = f"https://{API_HOST}/fixtures"
     params = {"date": data_pesquisa}
 
-    candidatos_reais = []
-    agora_bsb = datetime.now(FUSO_BRASILIA)
-    # Jogos que começam pelo menos 45 a 60 minutos à frente para garantir folga e não descartar a tarde toda
-    horario_minimo = agora_bsb + timedelta(minutes=60)
+    jogos_reais = []
+    # Premissa: Jogos programados a partir do meio-dia (12:00) horário de Brasília
+    hora_corte = 12
 
     if API_KEY and API_KEY != "SUA_CHAVE_AQUI":
         try:
             response = requests.get(url, headers=HEADERS, params=params, timeout=15)
             dados = response.json().get("response", [])
-            print(f"--> [DEBUG] API-Sports: {len(dados)} jogos retornados para hoje.")
+            print(f"--> [DEBUG] Total fixtures API hoje: {len(dados)}")
 
             for match in dados:
-                status_short = match.get("fixture", {}).get("status", {}).get("short", "")
-                if status_short not in ["NS", "TBD"]:
+                dt_bsb = converter_para_datetime_bsb(match["fixture"]["date"])
+                if not dt_bsb:
                     continue
 
-                dt_jogo_bsb = converter_para_datetime_bsb(match["fixture"]["date"])
-                if not dt_jogo_bsb or dt_jogo_bsb < horario_minimo:
+                # Filtra apenas jogos que acontecem a partir de 12:00 de Brasília
+                if dt_bsb.hour < hora_corte:
                     continue
 
-                hora_bsb = formatar_horario_brasilia(dt_jogo_bsb)
+                hora_formatada = formatar_horario_brasilia(dt_bsb)
                 time_casa = match["teams"]["home"]["name"]
                 time_fora = match["teams"]["away"]["name"]
                 pais = match.get("league", {}).get("country", "Mundo")
@@ -114,52 +99,61 @@ def buscar_partidas_completas(data_pesquisa):
                 bandeira = match.get("league", {}).get("flag", "")
                 estadio = match.get("fixture", {}).get("venue", {}).get("name") or "Local a definir"
 
-                candidatos_reais.append({
+                jogos_reais.append({
                     "casa": time_casa,
                     "fora": time_fora,
                     "pais": pais,
                     "liga": liga,
                     "bandeira": bandeira,
                     "estadio": estadio,
-                    "horario_brasilia": hora_bsb,
-                    "datetime_bsb": dt_jogo_bsb,
+                    "horario_brasilia": hora_formatada,
+                    "datetime_bsb": dt_bsb,
                     "tipo": "real"
                 })
 
-            candidatos_reais.sort(key=lambda x: x["datetime_bsb"])
-            print(f"--> [DEBUG] Jogos pré-live válidos encontrados: {len(candidatos_reais)}")
+            # Ordena por horário crescente
+            jogos_reais.sort(key=lambda x: x["datetime_bsb"])
+            print(f"--> [DEBUG] Partidas a partir de 12:00 BSB: {len(jogos_reais)}")
 
         except Exception as e:
-            print(f"--> [DEBUG] Erro ao consultar API-Sports: {e}")
-            candidatos_reais = []
+            print(f"--> [DEBUG] Erro API-Sports: {e}")
+            jogos_reais = []
 
-    # Monta os 4 jogos para Over 1.5
+    # Separação independente dos dois mercados usando os jogos reais
     jogos_over = []
-    if len(candidatos_reais) >= 4:
-        for j in candidatos_reais[:4]:
-            jogos_over.append({**j, "probabilidade": 82.0, "odd": 1.28})
-    else:
-        jogos_over = obter_jogos_reserva("over")
-
-    # Monta os 4 jogos para Ambas Marcam Sim (pega os próximos da grade real)
     jogos_btts = []
-    if len(candidatos_reais) >= 8:
-        for j in candidatos_reais[4:8]:
-            jogos_btts.append({**j, "probabilidade": 76.5, "odd": 1.65})
-    elif len(candidatos_reais) >= 4:
-        # Se tiver entre 4 e 7 jogos, usa os mesmos reais adaptados para o mercado de Ambas
-        for j in candidatos_reais[:4]:
-            jogos_btts.append({**j, "probabilidade": 74.0, "odd": 1.68})
-    else:
-        jogos_btts = obter_jogos_reserva("btts")
 
-    origem = "real" if any(j.get("tipo") == "real" for j in jogos_over) else "simulado"
+    if len(jogos_reais) >= 4:
+        # 4 jogos para Over 1.5
+        for j in jogos_reais[:4]:
+            jogos_over.append({**j, "probabilidade": 82.0, "odd": 1.28})
+
+        # 4 jogos para Ambas Marcam Sim (pega os 4 seguintes da tarde/noite)
+        fonte_btts = jogos_reais[4:8] if len(jogos_reais) >= 8 else jogos_reais[:4]
+        for j in fonte_btts:
+            jogos_btts.append({**j, "probabilidade": 77.0, "odd": 1.65})
+    else:
+        # Fallback de segurança apenas se a API estiver fora do ar
+        jogos_over = [
+            {"casa": "Häcken W", "fora": "Chelsea W", "hora": "14:45", "pais": "World", "liga": "Champions League W", "estadio": "Arena", "odd": 1.25, "prob": 84.0, "tipo": "reserva"},
+            {"casa": "Real Madrid W", "fora": "Paris FC W", "hora": "14:45", "pais": "World", "liga": "Champions League W", "estadio": "Ciudad Real Madrid", "odd": 1.28, "prob": 82.0, "tipo": "reserva"},
+            {"casa": "Midtjylland W", "fora": "Odense Q W", "hora": "15:00", "pais": "Denmark", "liga": "Kvindeliga", "estadio": "Local", "odd": 1.22, "prob": 86.0, "tipo": "reserva"},
+            {"casa": "Wolfsburg W", "fora": "Lyon W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "AOK Stadion", "odd": 1.30, "prob": 80.0, "tipo": "reserva"}
+        ]
+        jogos_btts = [
+            {"casa": "Arsenal W", "fora": "Juventus W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "Emirates Stadium", "odd": 1.68, "prob": 78.0, "tipo": "reserva"},
+            {"casa": "Bayern W", "fora": "Valerenga W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "FC Bayern Campus", "odd": 1.62, "prob": 81.0, "tipo": "reserva"},
+            {"casa": "Barcelona W", "fora": "St. Pölten W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "Johan Cruyff", "odd": 1.70, "prob": 76.0, "tipo": "reserva"},
+            {"casa": "Man City W", "fora": "Hammarby W", "hora": "17:00", "pais": "World", "liga": "Champions League W", "estadio": "Academy Stadium", "odd": 1.65, "prob": 79.0, "tipo": "reserva"}
+        ]
+
+    origem = "real" if len(jogos_reais) >= 4 else "reserva"
     return jogos_over, jogos_btts, origem
 
 @app.route("/", methods=["GET"])
 def index():
     data_hoje_bsb = obter_data_brasilia()
-    jogos_over, jogos_btts, status_origem = buscar_partidas_completas(data_hoje_bsb)
+    jogos_over, jogos_btts, origem = buscar_partidas_do_dia(data_hoje_bsb)
 
     sistemas_over = gerar_sistemas_apostas(jogos_over, prefixo="OV")
     sistemas_btts = gerar_sistemas_apostas(jogos_btts, prefixo="AM")
@@ -171,7 +165,7 @@ def index():
         jogos_btts=jogos_btts,
         sistemas_over=sistemas_over,
         sistemas_btts=sistemas_btts,
-        origem=status_origem
+        origem=origem
     )
 
 if __name__ == "__main__":
