@@ -9,6 +9,9 @@
         .container { max-width: 960px; margin: 0 auto; }
         h1, h2 { color: #38bdf8; margin-bottom: 8px; }
         .meta-header { background: #1e293b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #38bdf8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .badge-status { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
+        .badge-real { background: #166534; color: #4ade80; }
+        .badge-simulado { background: #854d0e; color: #fef08a; }
         .btn-copiar { background: #0284c7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-copiar:hover { background: #0369a1; }
         .grid-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 30px; }
@@ -32,14 +35,18 @@
         <h1>🎯 Radar Over 1.5 Gols</h1>
         <div class="meta-header">
             <div>
-                <strong>Data:</strong> {{ data_brasilia }} &nbsp;|&nbsp;
-                <strong>Fuso:</strong> Horário de Brasília &nbsp;|&nbsp;
-                <strong>Ordenação:</strong> Cronológica
+                <strong>Data:</strong> {{ data_brasilia }}  | 
+                <strong>Fuso:</strong> Horário de Brasília  | 
+                {% if origem == 'real' %}
+                    <span class="badge-status badge-real">🟢 DADOS AO VIVO (API-SPORTS)</span>
+                {% else %}
+                    <span class="badge-status badge-simulado">🟡 MODO DEMONSTRAÇÃO (RESERVA)</span>
+                {% endif %}
             </div>
             <button class="btn-copiar" onclick="copiarBilhetes()">📋 Copiar Jogos e Apostas</button>
         </div>
 
-        <h2>Os 4 Jogos do Dia (Em Ordem Cronológica)</h2>
+        <h2>Os 4 Jogos Selecionados (Ordem Cronológica)</h2>
         <div class="grid-jogos">
             {% for jogo in jogos %}
             <div class="card-jogo">
@@ -56,7 +63,7 @@
         <div class="calculadora-box">
             <label for="valorTotal">💰 Investimento Total da Aposta (R$):</label>
             <input type="number" id="valorTotal" class="input-moeda" value="60" min="1" step="1" oninput="atualizarCalculos()">
-            <span style="color: #94a3b8; font-size: 0.85rem; margin-left: 10px;">(Atualiza automaticamente o retorno por bilhete)</span>
+            <span style="color: #94a3b8; font-size: 0.85rem; margin-left: 10px;">(Calcula o retorno estimado automaticamente)</span>
         </div>
 
         <!-- Sistema 2/4 -->
@@ -144,13 +151,12 @@
                 const hora = card.querySelector('.horario').innerText;
                 texto += `J${idx+1}: ${titulo} - ${hora}\n`;
             });
-            texto += "\n📌 Acesse o painel para conferir as 6 duplas (2/4) e 4 triplas (3/4)!";
+            texto += "\n📌 Sistema 2/4 e 3/4 calculados no painel!";
             navigator.clipboard.writeText(texto).then(() => {
                 alert("Jogos e bilhetes copiados para a área de transferência com sucesso!");
             });
         }
 
-        // Executa ao carregar a página
         atualizarCalculos();
     </script>
 </body>
