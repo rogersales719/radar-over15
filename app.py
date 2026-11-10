@@ -104,7 +104,6 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
         itens.append({
             "rotulo": f"J{i+1}",
             "partida": f"{j['casa']} x {j['fora']}",
-            "liga": f"{j.get('pais', '')} - {j.get('liga', '')}",
             "odd": j.get("odd", odd_padrao)
         })
 
@@ -137,24 +136,36 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
 
 def buscar_e_filtrar_jogos(data_pesquisa):
     url = f"https://{API_HOST}/fixtures"
-    params = {"date": data_pesquisa, "status": "NS"}
+    # Consulta pelo dia completo no fuso UTC
+    params = {"date": data_pesquisa}
 
     jogos_reais = []
     agora_bsb = datetime.now(FUSO_BRASILIA)
-    # Filtro Pré-Live: mínimo de 2 horas de antecedência
-    horario_minimo = agora_bsb + timedelta(hours=2)
+    # Folga pré-live: pelo menos 1 hora e meia a 2 horas (vamos colocar 1h30 para flexibilizar a janela)
+    horario_minimo = agora_bsb + timedelta(minutes=90)
 
     if API_KEY and API_KEY != "SUA_CHAVE_AQUI":
         try:
             response = requests.get(url, headers=HEADERS, params=params, timeout=12)
             retorno_json = response.json()
             dados = retorno_json.get("response", [])
+            erros = retorno_json.get("errors", {})
 
+            print(f"--> [DEBUG] Total de partidas retornadas hoje: {len(dados)} | Erros: {erros}")
+
+            # Filtra todas as partidas que ainda não começaram e têm folga pré-live
+            candidatos = []
             for match in dados:
+                status_short = match["fixture"]["status"]["short"]
+                # Apenas jogos que NÃO iniciaram (NS = Not Started, TBD = Time to be defined)
+                if status_short not in ["NS", "TBD"]:
+                    continue
+
                 dt_jogo_bsb = converter_para_datetime_bsb(match["fixture"]["date"])
                 if not dt_jogo_bsb:
                     continue
 
+                # Garante que o jogo começa no mínimo com 1h30 de antecedência de agora
                 if dt_jogo_bsb < horario_minimo:
                     continue
 
@@ -168,7 +179,8 @@ def buscar_e_filtrar_jogos(data_pesquisa):
                 estadio = match.get("fixture", {}).get("venue", {}).get("name") or "Local a definir"
 
                 exp_gols, prob = estimar_probabilidade_over_1_5(1.9, 1.3, 1.5, 1.1)
-                jogos_reais.append({
+
+                candidatos.append({
                     "casa": time_casa,
                     "fora": time_fora,
                     "pais": pais,
@@ -183,15 +195,17 @@ def buscar_e_filtrar_jogos(data_pesquisa):
                     "tipo": "real"
                 })
 
-                if len(jogos_reais) >= 4:
-                    break
+            # Ordena por horário mais próximo
+            candidatos.sort(key=lambda x: x["datetime_bsb"])
+            jogos_reais = candidatos[:4]
+
         except Exception as e:
-            print(f"--> [DEBUG] Erro ao buscar jogos pré-live: {e}")
+            print(f"--> [DEBUG] Erro de requisição na API: {e}")
             jogos_reais = []
 
     total_reais = len(jogos_reais)
     if total_reais >= 4:
-        resultado = jogos_reais[:4]
+        resultado = jogos_reais
         status_origem = "real"
     elif total_reais > 0:
         faltam = 4 - total_reais
