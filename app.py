@@ -3,11 +3,11 @@ from datetime import datetime
 from itertools import combinations
 import pytz
 import requests
-from flask import Flask, render_template, request
+from flask import Flask, render_template
 
 app = Flask(__name__)
 
-# Configurações de API (Substitua pela sua chave ou use variável de ambiente no Render)
+# Lê a chave da API das variáveis de ambiente do Render
 API_KEY = os.environ.get("FOOTBALL_API_KEY", "SUA_CHAVE_AQUI")
 API_HOST = "api-football-v1.p.rapidapi.com"
 HEADERS = {
@@ -58,6 +58,7 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
         itens.append({
             "rotulo": f"J{i+1}",
             "partida": f"{j['casa']} x {j['fora']}",
+            "horario": j["horario_brasilia"],
             "odd": j.get("odd", odd_padrao)
         })
 
@@ -67,7 +68,7 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
     for combo in duplas:
         odd_total = round(combo[0]["odd"] * combo[1]["odd"], 2)
         sistema_2_4.append({
-            "jogos": f"{combo[0]['partida']}  +  {combo[1]['partida']}",
+            "jogos": f"{combo[0]['partida']} + {combo[1]['partida']}",
             "rotulos": f"{combo[0]['rotulo']} + {combo[1]['rotulo']}",
             "odd_total": odd_total
         })
@@ -78,7 +79,7 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
     for combo in triplas:
         odd_total = round(combo[0]["odd"] * combo[1]["odd"] * combo[2]["odd"], 2)
         sistema_3_4.append({
-            "jogos": f"{combo[0]['partida']}  +  {combo[1]['partida']}  +  {combo[2]['partida']}",
+            "jogos": f"{combo[0]['partida']} + {combo[1]['partida']} + {combo[2]['partida']}",
             "rotulos": f"{combo[0]['rotulo']} + {combo[1]['rotulo']} + {combo[2]['rotulo']}",
             "odd_total": odd_total
         })
@@ -91,23 +92,23 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
 def buscar_e_filtrar_jogos(data_pesquisa):
     """
     Busca jogos do dia na API. Se a chave não estiver configurada,
-    retorna uma simulação realista já convertida para o fuso de Brasília.
+    retorna uma seleção filtrada e reordenada por horário.
     """
     url = f"https://{API_HOST}/v3/fixtures"
     params = {"date": data_pesquisa, "status": "NS"}
 
-    # Fallback seguro para teste inicial sem chamada real de API
+    # Caso ainda não tenha inserido a chave real no Render
     if API_KEY == "SUA_CHAVE_AQUI":
-        jogos_simulados = [
-            {"casa": "Bayern München", "fora": "Bayer Leverkusen", "hora": "16:30", "pro_casa": 2.8, "contra_fora": 1.4, "pro_fora": 1.9, "contra_casa": 1.1, "odd": 1.25},
-            {"casa": "Manchester City", "fora": "Tottenham", "hora": "14:00", "pro_casa": 2.5, "contra_fora": 1.5, "pro_fora": 1.6, "contra_casa": 1.0, "odd": 1.28},
+        jogos_candidatos = [
             {"casa": "PSV Eindhoven", "fora": "Ajax", "hora": "11:30", "pro_casa": 2.6, "contra_fora": 1.3, "pro_fora": 1.7, "contra_casa": 1.2, "odd": 1.22},
+            {"casa": "Manchester City", "fora": "Tottenham", "hora": "14:00", "pro_casa": 2.5, "contra_fora": 1.5, "pro_fora": 1.6, "contra_casa": 1.0, "odd": 1.28},
+            {"casa": "Bayern München", "fora": "Bayer Leverkusen", "hora": "16:30", "pro_casa": 2.8, "contra_fora": 1.4, "pro_fora": 1.9, "contra_casa": 1.1, "odd": 1.25},
             {"casa": "Real Madrid", "fora": "Villarreal", "hora": "17:00", "pro_casa": 2.2, "contra_fora": 1.2, "pro_fora": 1.4, "contra_casa": 0.9, "odd": 1.30},
             {"casa": "Getafe", "fora": "Mallorca", "hora": "10:00", "pro_casa": 0.8, "contra_fora": 0.7, "pro_fora": 0.6, "contra_casa": 0.8, "odd": 1.55}
         ]
         
         analisados = []
-        for j in jogos_simulados:
+        for j in jogos_candidatos:
             exp_gols, prob = estimar_probabilidade_over_1_5(j["pro_casa"], j["contra_fora"], j["pro_fora"], j["contra_casa"])
             analisados.append({
                 "casa": j["casa"],
@@ -118,21 +119,24 @@ def buscar_e_filtrar_jogos(data_pesquisa):
                 "odd": j["odd"]
             })
         
-        # Ordena pela maior probabilidade e retorna os 4 melhores
+        # 1. Pega os 4 de maior probabilidade
         analisados.sort(key=lambda x: x["probabilidade"], reverse=True)
-        return analisados[:4]
+        top_4 = analisados[:4]
+        
+        # 2. Ordena cronologicamente por horário de Brasília
+        top_4.sort(key=lambda x: x["horario_brasilia"])
+        return top_4
 
     try:
         response = requests.get(url, headers=HEADERS, params=params, timeout=10)
         dados = response.json().get("response", [])
         
         analisados = []
-        for match in dados[:15]:  # Amostra para respeitar a cota diária
+        for match in dados[:15]:
             hora_bsb = formatar_horario_brasilia(match["fixture"]["date"])
             time_casa = match["teams"]["home"]["name"]
             time_fora = match["teams"]["away"]["name"]
 
-            # Valores de referência para o motor de cálculo
             exp_gols, prob = estimar_probabilidade_over_1_5(1.8, 1.3, 1.4, 1.0)
             
             analisados.append({
@@ -145,7 +149,9 @@ def buscar_e_filtrar_jogos(data_pesquisa):
             })
 
         analisados.sort(key=lambda x: x["probabilidade"], reverse=True)
-        return analisados[:4]
+        top_4 = analisados[:4]
+        top_4.sort(key=lambda x: x["horario_brasilia"])
+        return top_4
     except Exception as e:
         print(f"Erro na requisição: {e}")
         return []
