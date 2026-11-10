@@ -79,4 +79,95 @@ def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
         itens.append({
             "rotulo": f"J{i+1}",
             "partida": f"{j['casa']} x {j['fora']}",
-            "odd": j.get("odd", odd_pad
+            "odd": j.get("odd", odd_padrao)
+        })
+
+    # Sistema 2/4 (6 duplas)
+    duplas = list(combinations(itens, 2))
+    sistema_2_4 = []
+    for combo in duplas:
+        odd_total = round(combo[0]["odd"] * combo[1]["odd"], 2)
+        sistema_2_4.append({
+            "jogos": f"{combo[0]['partida']} + {combo[1]['partida']}",
+            "rotulos": f"{combo[0]['rotulo']} + {combo[1]['rotulo']}",
+            "odd_total": odd_total
+        })
+
+    # Sistema 3/4 (4 triplas)
+    triplas = list(combinations(itens, 3))
+    sistema_3_4 = []
+    for combo in triplas:
+        odd_total = round(combo[0]["odd"] * combo[1]["odd"] * combo[2]["odd"], 2)
+        sistema_3_4.append({
+            "jogos": f"{combo[0]['partida']} + {combo[1]['partida']} + {combo[2]['partida']}",
+            "rotulos": f"{combo[0]['rotulo']} + {combo[1]['rotulo']} + {combo[2]['rotulo']}",
+            "odd_total": odd_total
+        })
+
+    return {
+        "sistema_2_4": sistema_2_4,
+        "sistema_3_4": sistema_3_4
+    }
+
+def buscar_e_filtrar_jogos(data_pesquisa):
+    url = f"https://{API_HOST}/v3/fixtures"
+    params = {"date": data_pesquisa}
+
+    if not API_KEY or API_KEY == "SUA_CHAVE_AQUI":
+        return obter_jogos_reserva(), "simulado"
+
+    try:
+        response = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        dados = response.json().get("response", [])
+        
+        if not dados:
+            return obter_jogos_reserva(), "simulado"
+
+        analisados = []
+        for match in dados:
+            status = match["fixture"]["status"]["short"]
+            if status not in ["NS", "1H", "2H", "HT"]:
+                continue
+
+            hora_bsb = formatar_horario_brasilia(match["fixture"]["date"])
+            time_casa = match["teams"]["home"]["name"]
+            time_fora = match["teams"]["away"]["name"]
+
+            exp_gols, prob = estimar_probabilidade_over_1_5(1.9, 1.3, 1.5, 1.1)
+            
+            analisados.append({
+                "casa": time_casa,
+                "fora": time_fora,
+                "horario_brasilia": hora_bsb,
+                "gols_esperados": exp_gols,
+                "probabilidade": prob,
+                "odd": 1.30
+            })
+
+            if len(analisados) >= 4:
+                break
+
+        if len(analisados) < 4:
+            return obter_jogos_reserva(), "simulado"
+
+        analisados.sort(key=lambda x: x["horario_brasilia"])
+        return analisados, "real"
+    except Exception:
+        return obter_jogos_reserva(), "simulado"
+
+@app.route("/", methods=["GET"])
+def index():
+    data_hoje_bsb = obter_data_brasilia()
+    top_4, origem_dados = buscar_e_filtrar_jogos(data_hoje_bsb)
+    sistemas = gerar_sistemas_apostas(top_4)
+
+    return render_template(
+        "index.html",
+        data_brasilia=data_hoje_bsb,
+        jogos=top_4,
+        sistemas=sistemas,
+        origem=origem_dados
+    )
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
