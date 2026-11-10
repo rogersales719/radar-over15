@@ -48,26 +48,26 @@ def estimar_probabilidade_over_1_5(media_pro_casa, media_contra_fora, media_pro_
     return round(total_esperado, 2), probabilidade
 
 def obter_jogos_reserva():
-    """Retorna 4 partidas de demonstração caso a API não devolva jogos."""
+    """Lista de segurança para preencher partidas ausentes."""
     candidatos = [
         {"casa": "PSV Eindhoven", "fora": "Ajax", "hora": "11:30", "pro_casa": 2.6, "contra_fora": 1.3, "pro_fora": 1.7, "contra_casa": 1.2, "odd": 1.22},
         {"casa": "Manchester City", "fora": "Tottenham", "hora": "14:00", "pro_casa": 2.5, "contra_fora": 1.5, "pro_fora": 1.6, "contra_casa": 1.0, "odd": 1.28},
         {"casa": "Bayern München", "fora": "Bayer Leverkusen", "hora": "16:30", "pro_casa": 2.8, "contra_fora": 1.4, "pro_fora": 1.9, "contra_casa": 1.1, "odd": 1.25},
         {"casa": "Real Madrid", "fora": "Villarreal", "hora": "17:00", "pro_casa": 2.2, "contra_fora": 1.2, "pro_fora": 1.4, "contra_casa": 0.9, "odd": 1.30}
     ]
-    analisados = []
+    reserva = []
     for j in candidatos:
         exp, prob = estimar_probabilidade_over_1_5(j["pro_casa"], j["contra_fora"], j["pro_fora"], j["contra_casa"])
-        analisados.append({
+        reserva.append({
             "casa": j["casa"],
             "fora": j["fora"],
             "horario_brasilia": j["hora"],
             "gols_esperados": exp,
             "probabilidade": prob,
-            "odd": j["odd"]
+            "odd": j["odd"],
+            "tipo": "reserva"
         })
-    analisados.sort(key=lambda x: x["horario_brasilia"])
-    return analisados
+    return reserva
 
 def gerar_sistemas_apostas(top_4_jogos, odd_padrao=1.30):
     """Gera todas as combinações de Sistema 2/4 (6 duplas) e 3/4 (4 triplas)."""
@@ -113,47 +113,53 @@ def buscar_e_filtrar_jogos(data_pesquisa):
     url = f"https://{API_HOST}/v3/fixtures"
     params = {"date": data_pesquisa}
 
-    if not API_KEY or API_KEY == "SUA_CHAVE_AQUI":
-        return obter_jogos_reserva(), "simulado"
+    jogos_reais = []
 
-    try:
-        response = requests.get(url, headers=HEADERS, params=params, timeout=10)
-        dados = response.json().get("response", [])
-        
-        if not dados:
-            return obter_jogos_reserva(), "simulado"
+    if API_KEY and API_KEY != "SUA_CHAVE_AQUI":
+        try:
+            response = requests.get(url, headers=HEADERS, params=params, timeout=10)
+            dados = response.json().get("response", [])
+            for match in dados:
+                status = match["fixture"]["status"]["short"]
+                if status not in ["NS", "1H", "2H", "HT"]:
+                    continue
 
-        analisados = []
-        for match in dados:
-            status = match["fixture"]["status"]["short"]
-            if status not in ["NS", "1H", "2H", "HT"]:
-                continue
+                hora_bsb = formatar_horario_brasilia(match["fixture"]["date"])
+                time_casa = match["teams"]["home"]["name"]
+                time_fora = match["teams"]["away"]["name"]
 
-            hora_bsb = formatar_horario_brasilia(match["fixture"]["date"])
-            time_casa = match["teams"]["home"]["name"]
-            time_fora = match["teams"]["away"]["name"]
+                exp_gols, prob = estimar_probabilidade_over_1_5(1.9, 1.3, 1.5, 1.1)
+                jogos_reais.append({
+                    "casa": time_casa,
+                    "fora": time_fora,
+                    "horario_brasilia": hora_bsb,
+                    "gols_esperados": exp_gols,
+                    "probabilidade": prob,
+                    "odd": 1.30,
+                    "tipo": "real"
+                })
 
-            exp_gols, prob = estimar_probabilidade_over_1_5(1.9, 1.3, 1.5, 1.1)
-            
-            analisados.append({
-                "casa": time_casa,
-                "fora": time_fora,
-                "horario_brasilia": hora_bsb,
-                "gols_esperados": exp_gols,
-                "probabilidade": prob,
-                "odd": 1.30
-            })
+                if len(jogos_reais) >= 4:
+                    break
+        except Exception:
+            jogos_reais = []
 
-            if len(analisados) >= 4:
-                break
+    # Lógica Híbrida: aproveita os reais e completa com reserva
+    total_reais = len(jogos_reais)
+    if total_reais >= 4:
+        resultado = jogos_reais[:4]
+        status_origem = "real"
+    elif total_reais > 0:
+        faltam = 4 - total_reais
+        reserva = obter_jogos_reserva()
+        resultado = jogos_reais + reserva[:faltam]
+        status_origem = f"hibrido ({total_reais} reais + {faltam} reserva)"
+    else:
+        resultado = obter_jogos_reserva()
+        status_origem = "simulado"
 
-        if len(analisados) < 4:
-            return obter_jogos_reserva(), "simulado"
-
-        analisados.sort(key=lambda x: x["horario_brasilia"])
-        return analisados, "real"
-    except Exception:
-        return obter_jogos_reserva(), "simulado"
+    resultado.sort(key=lambda x: x["horario_brasilia"])
+    return resultado, status_origem
 
 @app.route("/", methods=["GET"])
 def index():
