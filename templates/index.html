@@ -3,266 +3,429 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Radar de Apostas - Over 1.5 & Ambas Marcam</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        .container { max-width: 1040px; margin: 0 auto; }
-        h1 { color: #38bdf8; margin-bottom: 6px; }
-        h2 { color: #f1f5f9; font-size: 1.35rem; margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
-        .meta-header { background: #1e293b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #38bdf8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .badge-status { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
-        .badge-real { background: #166534; color: #4ade80; }
-        .badge-simulado { background: #854d0e; color: #fef08a; }
-        .btn-copiar { background: #0284c7; color: #fff; border: none; padding: 9px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-copiar:hover { background: #0369a1; }
-        
-        .grid-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .card-jogo { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; display: flex; flex-direction: column; justify-content: space-between; }
-        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .tag-rotulo { font-size: 0.8rem; background: #0284c7; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
-        .tag-rotulo-btts { background: #d97706; }
-        
-        .tag-tipo-real { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; background: #166534; color: #4ade80; }
-        .tag-tipo-reserva { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; background: #854d0e; color: #fef08a; }
-
-        .liga-info { font-size: 0.78rem; color: #38bdf8; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-        .liga-flag { width: 16px; height: 11px; object-fit: cover; border-radius: 2px; }
-        .times-titulo { font-size: 1.05rem; font-weight: 700; line-height: 1.3; color: #ffffff; }
-        .estadio-info { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
-        .horario { font-size: 0.85rem; color: #cbd5e1; margin-top: 10px; font-weight: 500; }
-        .prob { font-size: 1.15rem; color: #4ade80; font-weight: bold; margin-top: 6px; }
-
-        .box-investimento { background: #1e293b; border: 1px solid #38bdf8; padding: 20px; border-radius: 8px; margin-bottom: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        @media (max-width: 768px) { .box-investimento { grid-template-columns: 1fr; } }
-        .col-calc { background: #0f172a; padding: 16px; border-radius: 6px; border: 1px solid #334155; }
-        .col-calc h3 { margin: 0 0 10px 0; font-size: 1.05rem; color: #38bdf8; }
-        .calc-linha { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .input-moeda { background: #1e293b; border: 1px solid #475569; color: #4ade80; font-size: 1.1rem; font-weight: bold; padding: 6px 12px; border-radius: 6px; width: 100px; text-align: right; }
-        .total-box { font-size: 0.95rem; color: #94a3b8; margin-top: 8px; border-top: 1px solid #334155; padding-top: 8px; }
-        .total-box strong { color: #f8fafc; font-size: 1.1rem; }
-
-        .secao-sistema { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 28px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #334155; font-size: 0.92rem; }
-        th { color: #94a3b8; }
-        .odd-destaque { color: #fbbf24; font-weight: bold; }
-        .retorno-destaque { color: #4ade80; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎯 Radar de Apostas: Over 1.5 & Ambas Marcam</h1>
-        <div class="meta-header">
-            <div>
-                <strong>Data:</strong> {{ data_brasilia }} &nbsp;|&nbsp;
-                <strong>Fuso:</strong> Horário de Brasília &nbsp;|&nbsp;
-                {% if origem == 'real' %}
-                    <span class="badge-status badge-real">🟢 100% PRÉ-LIVE (AO VIVO)</span>
-                {% else %}
-                    <span class="badge-status badge-simulado">🟡 MODO DEMO (RESERVA)</span>
-                {% endif %}
-            </div>
-            <button class="btn-copiar" onclick="copiarBilhetes()">📋 Copiar Todos os Jogos</button>
-        </div>
-
-        <!-- CALCULADORA POR COMBINAÇÃO (SEPARADA) -->
-        <div class="box-investimento">
-            <div class="col-calc">
-                <h3>👥 Sistema 2/4 (6 Duplas)</h3>
-                <div class="calc-linha">
-                    <label for="valorDupla">Valor por Dupla (R$):</label>
-                    <input type="number" id="valorDupla" class="input-moeda" value="10" min="1" step="0.5" oninput="atualizarCalculos()">
-                </div>
-                <div class="total-box">
-                    Investimento Total nas Duplas: <strong id="totalDuplas">R$ 60,00</strong> (6 apostas)
-                </div>
-            </div>
-
-            <div class="col-calc">
-                <h3>🎯 Sistema 3/4 (4 Triplas)</h3>
-                <div class="calc-linha">
-                    <label for="valorTripla">Valor por Tripla (R$):</label>
-                    <input type="number" id="valorTripla" class="input-moeda" value="15" min="1" step="0.5" oninput="atualizarCalculos()">
-                </div>
-                <div class="total-box">
-                    Investimento Total nas Triplas: <strong id="totalTriplas">R$ 60,00</strong> (4 apostas)
-                </div>
-            </div>
-        </div>
-
-        <!-- SEÇÃO OVER 1.5 -->
-        <h2 style="color: #38bdf8;">⚽ MERCADO 1: Over 1.5 Gols (Mín. Folga Pré-Live)</h2>
-        <div class="grid-jogos">
-            {% for jogo in jogos_over %}
-            <div class="card-jogo">
-                <div>
-                    <div class="card-top">
-                        <span class="tag-rotulo">OV{{ loop.index }}</span>
-                        {% if jogo.tipo == 'real' %}
-                            <span class="tag-tipo-real">AO VIVO</span>
-                        {% else %}
-                            <span class="tag-tipo-reserva">DEMO/RESERVA</span>
-                        {% endif %}
-                    </div>
-                    <div class="liga-info">
-                        {% if jogo.bandeira %}<img src="{{ jogo.bandeira }}" class="liga-flag">{% endif %}
-                        <span>{{ jogo.pais }} - {{ jogo.liga }}</span>
-                    </div>
-                    <div class="times-titulo">{{ jogo.casa }} x {{ jogo.fora }}</div>
-                    <div class="estadio-info">📍 {{ jogo.estadio }}</div>
-                </div>
-                <div>
-                    <div class="horario">🕒 {{ jogo.horario_brasilia }} (Brasília)</div>
-                    <div class="prob">{{ jogo.probabilidade }}% chance</div>
-                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 4px;">Odd Over 1.5: {{ "%.2f"|format(jogo.odd) }}</div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-
-        <div class="secao-sistema">
-            <h3 style="color: #38bdf8; margin: 0 0 10px 0;">Sistemas Over 1.5 - Duplas e Triplas</h3>
-            <table>
-                <thead>
-                    <tr><th>Tipo</th><th>Código</th><th>Combinação</th><th>Odd Total</th><th>Retorno Est. (R$)</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in sistemas_over.sistema_2_4 %}
-                    <tr>
-                        <td><span class="tag-rotulo">Dupla</span></td>
-                        <td><strong>{{ item.rotulos }}</strong></td>
-                        <td>{{ item.jogos }}</td>
-                        <td class="odd-destaque">{{ "%.2f"|format(item.odd_total) }}</td>
-                        <td class="retorno-destaque retorno-dupla" data-odd="{{ item.odd_total }}">R$ 0,00</td>
-                    </tr>
-                    {% endfor %}
-                    {% for item in sistemas_over.sistema_3_4 %}
-                    <tr>
-                        <td><span class="tag-rotulo" style="background:#0284c7;">Tripla</span></td>
-                        <td><strong>{{ item.rotulos }}</strong></td>
-                        <td>{{ item.jogos }}</td>
-                        <td class="odd-destaque">{{ "%.2f"|format(item.odd_total) }}</td>
-                        <td class="retorno-destaque retorno-tripla" data-odd="{{ item.odd_total }}">R$ 0,00</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- SEÇÃO AMBAS MARCAM SIM -->
-        <h2 style="color: #fbbf24;">⚡ MERCADO 2: Ambas Marcam Sim (BTTS)</h2>
-        <div class="grid-jogos">
-            {% for jogo in jogos_btts %}
-            <div class="card-jogo" style="border-color: #d97706;">
-                <div>
-                    <div class="card-top">
-                        <span class="tag-rotulo tag-rotulo-btts">AM{{ loop.index }}</span>
-                        {% if jogo.tipo == 'real' %}
-                            <span class="tag-tipo-real">AO VIVO</span>
-                        {% else %}
-                            <span class="tag-tipo-reserva">DEMO/RESERVA</span>
-                        {% endif %}
-                    </div>
-                    <div class="liga-info" style="color: #fbbf24;">
-                        {% if jogo.bandeira %}<img src="{{ jogo.bandeira }}" class="liga-flag">{% endif %}
-                        <span>{{ jogo.pais }} - {{ jogo.liga }}</span>
-                    </div>
-                    <div class="times-titulo">{{ jogo.casa }} x {{ jogo.fora }}</div>
-                    <div class="estadio-info">📍 {{ jogo.estadio }}</div>
-                </div>
-                <div>
-                    <div class="horario">🕒 {{ jogo.horario_brasilia }} (Brasília)</div>
-                    <div class="prob" style="color: #fbbf24;">{{ jogo.probabilidade }}% chance</div>
-                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 4px;">Odd Ambas: {{ "%.2f"|format(jogo.odd) }}</div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-
-        <div class="secao-sistema" style="border-top: 3px solid #d97706;">
-            <h3 style="color: #fbbf24; margin: 0 0 10px 0;">Sistemas Ambas Marcam Sim - Duplas e Triplas</h3>
-            <table>
-                <thead>
-                    <tr><th>Tipo</th><th>Código</th><th>Combinação</th><th>Odd Total</th><th>Retorno Est. (R$)</th></tr>
-                </thead>
-                <tbody>
-                    {% for item in sistemas_btts.sistema_2_4 %}
-                    <tr>
-                        <td><span class="tag-rotulo tag-rotulo-btts">Dupla</span></td>
-                        <td><strong>{{ item.rotulos }}</strong></td>
-                        <td>{{ item.jogos }}</td>
-                        <td class="odd-destaque">{{ "%.2f"|format(item.odd_total) }}</td>
-                        <td class="retorno-destaque retorno-dupla" data-odd="{{ item.odd_total }}">R$ 0,00</td>
-                    </tr>
-                    {% endfor %}
-                    {% for item in sistemas_btts.sistema_3_4 %}
-                    <tr>
-                        <td><span class="tag-rotulo tag-rotulo-btts">Tripla</span></td>
-                        <td><strong>{{ item.rotulos }}</strong></td>
-                        <td>{{ item.jogos }}</td>
-                        <td class="odd-destaque">{{ "%.2f"|format(item.odd_total) }}</td>
-                        <td class="retorno-destaque retorno-tripla" data-odd="{{ item.odd_total }}">R$ 0,00</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-    </div>
-
+    <title>DirectDrop PRO - O Seu Ecossistema</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        function atualizarCalculos() {
-            const vDupla = parseFloat(document.getElementById('valorDupla').value) || 0;
-            const vTripla = parseFloat(document.getElementById('valorTripla').value) || 0;
+        let ficheirosSelecionados = [];
+        let todasPostagens = [];
+        let paginaAtual = 1;
+        const itensPorPagina = 12;
 
-            const totalD = vDupla * 6;
-            document.getElementById('totalDuplas').innerText = "R$ " + totalD.toFixed(2);
+        async function fazerLogout() { if(confirm("Deseja sair do sistema?")) { await fetch('/api/logout', { method: 'POST' }); window.location.href = "/"; } }
 
-            const totalT = vTripla * 4;
-            document.getElementById('totalTriplas').innerText = "R$ " + totalT.toFixed(2);
-
-            document.querySelectorAll('.retorno-dupla').forEach(td => {
-                const odd = parseFloat(td.getAttribute('data-odd'));
-                td.innerText = "R$ " + (vDupla * odd).toFixed(2);
+        function mudarTela(idTela, elementoBotao) {
+            document.querySelectorAll('.tela-conteudo').forEach(el => el.classList.add('hidden'));
+            const telaAlvo = document.getElementById(idTela);
+            if(telaAlvo) telaAlvo.classList.remove('hidden');
+            
+            document.querySelectorAll('.menu-item').forEach(btn => {
+                if(!btn.classList.contains('logout-btn')) { btn.classList.remove('bg-indigo-800', 'border-l-4', 'border-white'); btn.classList.add('hover:bg-indigo-700'); }
             });
+            if(elementoBotao && !elementoBotao.classList.contains('logout-btn')) { elementoBotao.classList.add('bg-indigo-800', 'border-l-4', 'border-white'); elementoBotao.classList.remove('hover:bg-indigo-700'); }
 
-            document.querySelectorAll('.retorno-tripla').forEach(td => {
-                const odd = parseFloat(td.getAttribute('data-odd'));
-                td.innerText = "R$ " + (vTripla * odd).toFixed(2);
-            });
+            if(idTela === 'tela-historico') carregarFeed();
+            if(idTela === 'tela-leads') carregarLeads();
+            if(idTela === 'tela-automacoes') carregarRegras();
         }
 
-        function copiarBilhetes() {
-            let texto = "🎯 RADAR DE APOSTAS PRÉ-LIVE (HORÁRIO DE BRASÍLIA)\n\n";
+        // --- INTEGRAÇÃO COM O COPYWRITER IA NATIVO ---
+        async function chamarIA(tipo, idCampoResultado) {
+            const tema = prompt("Sobre qual tema ou produto deseja escrever? (Ex: E-book de dieta, Curso de vendas, E-book EFT...)");
+            if (!tema || tema.trim() === "") return;
 
-            texto += "⚽ MERCADO: OVER 1.5 GOLS\n";
-            document.querySelectorAll('.tag-rotulo:not(.tag-rotulo-btts)').forEach((tag) => {
-                const card = tag.closest('.card-jogo');
-                if (card) {
-                    const times = card.querySelector('.times-titulo').innerText;
-                    const liga = card.querySelector('.liga-info').innerText.trim();
-                    const hora = card.querySelector('.horario').innerText.trim();
-                    texto += `[${tag.innerText}] ${times} | ${liga} | ${hora}\n`;
-                }
-            });
+            const btnAtivador = document.getElementById(`btn-ia-${tipo}`);
+            const textoOriginal = btnAtivador.innerHTML;
+            btnAtivador.innerHTML = "⏳ A gerar com IA...";
+            btnAtivador.disabled = true;
 
-            texto += "\n⚡ MERCADO: AMBAS MARCAM SIM (BTTS)\n";
-            document.querySelectorAll('.tag-rotulo-btts').forEach((tag) => {
-                const card = tag.closest('.card-jogo');
-                if (card) {
-                    const times = card.querySelector('.times-titulo').innerText;
-                    const liga = card.querySelector('.liga-info').innerText.trim();
-                    const hora = card.querySelector('.horario').innerText.trim();
-                    texto += `[${tag.innerText}] ${times} | ${liga} | ${hora}\n`;
-                }
-            });
+            try {
+                const res = await fetch('/api/gerar-ia', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tema: tema, tipo: tipo })
+                });
+                
+                if(res.status === 401 || res.status === 303) { window.location.href = "/"; return; }
+                const data = await res.json();
+                
+                if (data.sucesso) {
+                    const campo = document.getElementById(idCampoResultado);
+                    if(campo) campo.value = data.texto;
+                } else { alert("Falha na IA: " + data.erro); }
+            } catch(e) { alert("Erro de conexão com o módulo de IA."); }
 
-            navigator.clipboard.writeText(texto).then(() => {
-                alert("Jogos de Over 1.5 e Ambas Marcam copiados com sucesso!");
-            });
+            btnAtivador.innerHTML = textoOriginal;
+            btnAtivador.disabled = false;
         }
 
-        atualizarCalculos();
+        function adicionarImagemProgressiva(input) {
+            if (input.files && input.files.length > 0) { Array.from(input.files).forEach(file => ficheirosSelecionados.push(file)); atualizarContainerPreview(); input.value = ""; }
+        }
+        function removerImagem(index) { ficheirosSelecionados.splice(index, 1); atualizarContainerPreview(); }
+        
+        function atualizarContainerPreview() {
+            const container = document.getElementById('preview-container');
+            const contadorBadge = document.getElementById('contador-imagens');
+            if(!container) return;
+            container.innerHTML = "";
+            if (ficheirosSelecionados.length > 0) {
+                container.classList.remove('hidden');
+                if(contadorBadge) { contadorBadge.innerText = `${ficheirosSelecionados.length} ficheiro(s) na fila`; contadorBadge.classList.remove('hidden'); }
+                ficheirosSelecionados.forEach((file, index) => {
+                    const reader = new FileReader();
+                    const isVideo = file.type.startsWith('video/');
+                    reader.onload = function(e) {
+                        const div = document.createElement('div');
+                        div.className = "relative w-24 h-24 rounded-lg overflow-hidden border-2 border-indigo-500 shadow-md bg-black flex items-center justify-center";
+                        let mediaHtml = isVideo ? `<video src="${e.target.result}" class="w-full h-full object-cover"></video><span class="absolute text-white text-2xl">▶</span>` : `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                        div.innerHTML = `${mediaHtml}<span class="absolute top-1 left-1 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded font-bold shadow">#${index + 1}</span><button type="button" onclick="removerImagem(${index})" class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow hover:bg-red-700 transition">✕</button>`;
+                        container.appendChild(div);
+                    }
+                    reader.readAsDataURL(file);
+                });
+            } else { container.classList.add('hidden'); if(contadorBadge) contadorBadge.classList.add('hidden'); }
+        }
+
+        function gerarIdPostagem() {
+            const idGerado = "post_" + Math.random().toString(36).substring(2, 10) + Date.now().toString().slice(-4);
+            const inputPostId = document.getElementById('input-post-id-gerado');
+            const containerBox = document.getElementById('box-id-gerado');
+            if(inputPostId && containerBox) { inputPostId.value = idGerado; containerBox.classList.remove('hidden'); alert("ID gerado com sucesso! Cole-o no Construtor de Fluxos."); }
+        }
+        function copiarIdTelaPost() { const inputId = document.getElementById('input-post-id-gerado'); if(!inputId) return; inputId.select(); navigator.clipboard.writeText(inputId.value); alert("ID copiado!"); }
+
+        function abrirModalConfirmacao() {
+            if(ficheirosSelecionados.length === 0) { alert("Adicione ficheiros (imagem ou vídeo)."); return; }
+            const legendaElement = document.getElementById('legenda-post');
+            const legenda = legendaElement ? legendaElement.value.replace(/\n/g, "<br>") : "";
+            const modal = document.getElementById('modal-confirmacao');
+            const simuladorMedia = document.getElementById('simulador-media');
+            const simuladorLegenda = document.getElementById('simulador-legenda');
+            
+            simuladorMedia.innerHTML = ""; simuladorLegenda.innerHTML = legenda ? legenda : "<em>Sem legenda...</em>";
+            
+            const fileToShow = ficheirosSelecionados[0];
+            const isVideo = fileToShow.type.startsWith('video/');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if(isVideo) { simuladorMedia.innerHTML = `<video src="${e.target.result}" controls autoplay loop class="w-full h-[400px] object-cover bg-black"></video>`; } 
+                else { simuladorMedia.innerHTML = `<img src="${e.target.result}" class="w-full h-[400px] object-cover bg-gray-100">`; }
+                if(ficheirosSelecionados.length > 1) { simuladorMedia.innerHTML += `<div class="absolute top-3 right-3 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full font-bold">1/${ficheirosSelecionados.length}</div>`; }
+            }
+            reader.readAsDataURL(fileToShow);
+            if(modal) modal.classList.remove('hidden');
+        }
+
+        function fecharModal() { document.getElementById('modal-confirmacao').classList.add('hidden'); document.getElementById('simulador-media').innerHTML = ""; }
+
+        async function confirmarEPublicar() {
+            fecharModal();
+            const botao = document.getElementById('btn-publicar-principal');
+            if(botao) { botao.innerText = "A processar..."; botao.classList.add("opacity-50", "cursor-not-allowed"); }
+            const formData = new FormData();
+            ficheirosSelecionados.forEach(file => formData.append("arquivos", file));
+            const legendaElement = document.getElementById('legenda-post');
+            formData.append("legenda", legendaElement ? legendaElement.value : "");
+
+            try {
+                const response = await fetch('/api/postar', { method: 'POST', body: formData });
+                if(response.status === 401 || response.status === 303) { window.location.href = "/"; return; }
+                const resultado = await response.json();
+                if(resultado.sucesso) {
+                    alert(resultado.mensagem + "\n\nPublicação efetuada com sucesso!");
+                    ficheirosSelecionados = [];
+                    document.getElementById('preview-container').innerHTML = "";
+                    document.getElementById('preview-container').classList.add('hidden');
+                    document.getElementById('contador-imagens').classList.add('hidden');
+                    if(legendaElement) legendaElement.value = "";
+                    const boxId = document.getElementById('box-id-gerado');
+                    if(boxId) boxId.classList.add('hidden');
+                    carregarFeed();
+                } else { alert("Erro: " + resultado.erro); }
+            } catch (erro) { alert("Falha de conexão ao enviar."); }
+            if(botao) { botao.innerText = "Publicar Agora"; botao.classList.remove("opacity-50", "cursor-not-allowed"); }
+        }
+
+        async function carregarFeed(filtroTipo = 'TODOS') {
+            try {
+                const response = await fetch('/api/feed');
+                if(response.status === 401 || response.status === 303) { window.location.href = "/"; return; }
+                const data = await response.json();
+                if (data.sucesso) { todasPostagens = data.posts || []; renderizarFeedPaginado(filtroTipo); }
+            } catch (erro) { }
+        }
+
+        function renderizarFeedPaginado(filtroTipo) {
+            const grid = document.getElementById('grid-posts');
+            if(!grid) return;
+            let postsFiltrados = todasPostagens;
+            if(filtroTipo === 'FEED') postsFiltrados = todasPostagens.filter(p => p.tipo !== 'VIDEO');
+            if(filtroTipo === 'REELS') postsFiltrados = todasPostagens.filter(p => p.tipo === 'VIDEO');
+            if(filtroTipo === 'STORIES') postsFiltrados = [];
+            
+            if(postsFiltrados.length === 0) { grid.innerHTML = `<div class="col-span-4 text-center text-gray-400 py-12">Nenhuma publicação encontrada.</div>`; document.getElementById('paginacao-container').innerHTML = ""; return; }
+            const inicio = (paginaAtual - 1) * itensPorPagina;
+            const itensPagina = postsFiltrados.slice(inicio, inicio + itensPorPagina);
+            grid.innerHTML = "";
+            itensPagina.forEach(post => {
+                const isVideo = post.tipo === 'VIDEO';
+                grid.innerHTML += `
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow transition group relative">
+                        <div class="h-36 bg-gray-100 overflow-hidden relative"><img src="${post.imagem}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">${isVideo ? '<span class="absolute inset-0 flex items-center justify-center text-white text-3xl opacity-80">▶</span>' : ''}<span class="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">${post.tipo}</span></div>
+                        <div class="p-2.5"><p class="text-xs text-gray-600 truncate mb-2" title="${post.legenda}">${post.legenda}</p><div class="flex justify-between items-center text-[11px] text-gray-500 border-t pt-1.5"><span>❤️ ${post.likes} | 💬 ${post.comentarios}</span></div></div>
+                    </div>`;
+            });
+            const totalPaginas = Math.ceil(postsFiltrados.length / itensPorPagina);
+            let paginacaoHtml = "";
+            if(totalPaginas > 1) { for(let i=1; i<=totalPaginas; i++) { paginacaoHtml += `<button onclick="mudarPagina(${i}, '${filtroTipo}')" class="px-3 py-1 rounded text-xs font-bold ${i === paginaAtual ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}">${i}</button>`; } }
+            document.getElementById('paginacao-container').innerHTML = paginacaoHtml;
+        }
+        function mudarPagina(pagina, filtro) { paginaAtual = pagina; renderizarFeedPaginado(filtro); }
+        function filtrarAbasFeed(tipo, elemento) {
+            document.querySelectorAll('.tab-feed-btn').forEach(btn => btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-bold'));
+            if(elemento) elemento.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
+            paginaAtual = 1; carregarFeed(tipo);
+        }
+
+        async function criarRegra(event) {
+            event.preventDefault();
+            const palavra_chave = document.getElementById('nova-palavra').value;
+            const post_id = document.getElementById('regra-post-id').value;
+            const exigir_seguidor = document.getElementById('toggle-seguidor').checked;
+            const texto_botao = document.getElementById('novo-texto-botao').value || "🚀 Acessar Agora";
+            const link_produto = document.getElementById('novo-link').value;
+            const mensagem_dm = document.getElementById('nova-msg-dm').value;
+            const resposta_publica = document.getElementById('nova-resp-pub').value;
+
+            if(!post_id) { alert("Informe o ID da postagem."); return; }
+            try {
+                const res = await fetch('/api/regras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ palavra_chave, link_produto, mensagem_dm, resposta_publica, post_id, texto_botao, exigir_seguidor }) });
+                if(res.status === 401 || res.status === 303) { window.location.href = "/"; return; }
+                const data = await res.json();
+                if(data.sucesso) { alert("Fluxo criado com sucesso!"); document.getElementById('form-regra').reset(); carregarRegras(); } else { alert("Erro ao criar fluxo."); }
+            } catch(e) { alert("Erro de conexão."); }
+        }
+
+        async function carregarRegras() {
+            try {
+                const res = await fetch('/api/regras');
+                if(res.status === 401 || res.status === 303) { window.location.href = "/"; return; }
+                const data = await res.json();
+                const container = document.getElementById('lista-regras');
+                if(!container) return;
+                
+                if(data.sucesso && data.regras.length > 0) {
+                    let html = "";
+                    data.regras.forEach(r => {
+                        const checkVisual = r.exigir_seguidor ? `<span class="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-xs font-bold shadow-sm">🔒 Exige Verificação</span>` : `<span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-bold shadow-sm">⚡ Entrega Direta</span>`;
+                        html += `
+                            <div class="bg-white border-2 border-gray-100 p-5 rounded-xl shadow-sm mb-4 relative overflow-hidden">
+                                <div class="absolute left-0 top-0 bottom-0 w-1.5 ${r.exigir_seguidor ? 'bg-orange-500' : 'bg-green-500'}"></div>
+                                <div class="flex justify-between items-center mb-4">
+                                    <div class="flex items-center gap-3"><span class="bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">Gatilho: "${r.palavra_chave}"</span><span class="text-xs font-semibold text-gray-400">Post ID: ${r.post_id}</span></div>
+                                    ${checkVisual}
+                                </div>
+                                <div class="flex gap-4 items-start">
+                                    <div class="flex-1 bg-gray-50 rounded-lg p-3 border border-gray-200"><p class="text-[10px] text-gray-400 font-bold uppercase mb-1">1. Ação Pública</p><p class="text-sm text-gray-700 italic">"${r.resposta_publica}"</p></div>
+                                    <div class="flex items-center text-gray-300">➜</div>
+                                    <div class="flex-1 bg-indigo-50 rounded-lg p-3 border border-indigo-100"><p class="text-[10px] text-indigo-400 font-bold uppercase mb-1">2. Entrega na DM</p><p class="text-sm text-gray-800 mb-2">${r.mensagem_dm}</p><div class="inline-block bg-white border border-gray-300 text-indigo-700 font-bold px-3 py-1 rounded text-xs text-center shadow-sm cursor-pointer hover:bg-gray-50">${r.texto_botao || '🚀 Acessar Agora'}</div></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else { container.innerHTML = `<p class="text-gray-500 text-center py-4">Nenhum fluxo criado ainda.</p>`; }
+            } catch(e) { }
+        }
+
+        async function carregarLeads() {
+            try {
+                const response = await fetch('/api/leads');
+                if(response.status === 401 || response.status === 303) { window.location.href = "/"; return; }
+                const data = await response.json();
+                const container = document.getElementById('tabela-leads');
+                if(!container) return;
+                
+                if (data.sucesso && data.leads.length > 0) {
+                    let html = `<table class="w-full text-left border-collapse"><thead><tr class="border-b bg-gray-50 text-gray-600 text-xs uppercase"><th class="p-3">ID do Lead</th><th class="p-3">Comentário Capturado</th><th class="p-3">Data e Hora</th></tr></thead><tbody>`;
+                    data.leads.forEach(lead => { html += `<tr class="border-b hover:bg-gray-50 text-sm"><td class="p-3 font-medium text-indigo-600">${lead.sender_id}</td><td class="p-3 text-gray-800">${lead.comentario}</td><td class="p-3 text-gray-500">${lead.data}</td></tr>`; });
+                    html += `</tbody></table>`;
+                    container.innerHTML = html;
+                    const contador = document.getElementById('contador-leads');
+                    if(contador) contador.innerText = data.total;
+                } else { container.innerHTML = `<div class="text-center text-gray-500 py-8">Nenhum lead capturado ainda.</div>`; }
+            } catch (e) { }
+        }
+
+        window.onload = async function() {
+            carregarFeed();
+            try {
+                const resposta = await fetch('/api/conta');
+                if(resposta.status === 401 || resposta.status === 303) { window.location.href = "/"; return; }
+                const dados = await resposta.json();
+                const usernameDisplay = document.getElementById('username-display');
+                if (dados.username && usernameDisplay) { usernameDisplay.innerText = dados.username; document.getElementById('simulador-username').innerText = dados.username; }
+            } catch (erro) {}
+        };
     </script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex h-screen overflow-hidden">
+    
+    <aside class="w-64 bg-indigo-900 text-white flex flex-col shadow-xl z-10">
+        <div class="p-6 border-b border-indigo-800 flex items-center gap-3"><span class="text-2xl">🚀</span><span class="text-xl font-bold tracking-wide">DirectDrop</span></div>
+        <nav class="flex-1 py-6 space-y-1 flex flex-col h-[calc(100%-80px)]">
+            <div>
+                <button onclick="mudarTela('tela-dashboard', this)" class="menu-item w-full text-left py-3 px-6 transition bg-indigo-800 border-l-4 border-white flex items-center gap-3">📊 <span>Visão Geral</span></button>
+                <button onclick="mudarTela('tela-historico', this)" class="menu-item w-full text-left py-3 px-6 transition hover:bg-indigo-700 flex items-center gap-3">📱 <span>Minhas Postagens</span></button>
+                <button onclick="mudarTela('tela-postagem', this)" class="menu-item w-full text-left py-3 px-6 transition hover:bg-indigo-700 flex items-center gap-3">✍️ <span>Postador Nativo</span></button>
+                <button onclick="mudarTela('tela-automacoes', this)" class="menu-item w-full text-left py-3 px-6 transition hover:bg-indigo-700 flex items-center gap-3">🤖 <span>Construtor de Fluxos</span></button>
+                <button onclick="mudarTela('tela-leads', this)" class="menu-item w-full text-left py-3 px-6 transition hover:bg-indigo-700 flex items-center gap-3">👥 <span>Base de Leads</span></button>
+            </div>
+            <button onclick="fazerLogout()" class="logout-btn w-full text-left py-3 px-6 transition hover:bg-red-600 flex items-center gap-3 text-red-300 hover:text-white mt-auto border-t border-indigo-800">🚪 <span>Sair do Painel</span></button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative">
+        <header class="bg-white h-20 px-8 flex justify-between items-center shadow-sm border-b border-gray-200 z-0">
+            <h2 class="text-xl font-semibold text-gray-700">Painel de Controle</h2>
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-3 bg-gray-50 py-2 px-4 rounded-full border border-gray-200 ml-4">
+                    <div class="w-8 h-8 bg-indigo-200 rounded-full flex items-center justify-center text-indigo-700 font-bold">RS</div>
+                    <span class="font-medium text-sm text-gray-700" id="username-display">@rogerctsales</span>
+                    <span class="flex h-3 w-3 relative ml-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 bg-gray-50 relative">
+            
+            <div id="tela-dashboard" class="tela-conteudo">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">Métricas de Automação</h1>
+                <div class="grid grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-xl border-l-4 border-l-indigo-500 shadow-sm"><p class="text-gray-500 text-sm">DMs Enviadas</p><p class="text-3xl font-bold mt-2 text-gray-800" id="contador-leads">0</p></div>
+                    <div class="bg-white p-6 rounded-xl border-l-4 border-l-green-500 shadow-sm"><p class="text-gray-500 text-sm">Cliques nos Links</p><p class="text-3xl font-bold mt-2 text-gray-800">0</p></div>
+                    <div class="bg-white p-6 rounded-xl border-l-4 border-l-blue-500 shadow-sm"><p class="text-gray-500 text-sm">Leads Capturados</p><p class="text-3xl font-bold mt-2 text-gray-800">0</p></div>
+                    <div class="bg-white p-6 rounded-xl border-l-4 border-l-purple-500 shadow-sm"><p class="text-gray-500 text-sm">Status do Robô</p><p class="text-xl font-bold mt-2 text-green-600">Ativo 24/7</p></div>
+                </div>
+            </div>
+
+            <div id="tela-historico" class="tela-conteudo hidden">
+                <h1 class="text-2xl font-bold text-gray-800 mb-4">Minhas Postagens</h1>
+                <div class="flex gap-4 border-b mb-6 pb-2">
+                    <button onclick="filtrarAbasFeed('TODOS', this)" class="tab-feed-btn pb-2 border-b-2 border-indigo-600 text-indigo-600 font-bold text-sm">Tudo</button>
+                    <button onclick="filtrarAbasFeed('FEED', this)" class="tab-feed-btn pb-2 text-gray-500 hover:text-gray-800 text-sm">Feed / Carrossel</button>
+                    <button onclick="filtrarAbasFeed('REELS', this)" class="tab-feed-btn pb-2 text-gray-500 hover:text-gray-800 text-sm">Reels</button>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><div class="grid grid-cols-4 gap-4" id="grid-posts"></div><div id="paginacao-container" class="flex justify-center gap-2 mt-6"></div></div>
+            </div>
+
+            <div id="tela-postagem" class="tela-conteudo hidden">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">Postador Nativo</h1>
+                <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-4xl">
+                    <div class="mb-6 bg-gray-50 p-6 rounded-lg border-2 border-dashed border-gray-300 text-center">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Subir Ficheiros</label>
+                        <input type="file" id="file-upload" accept="image/*,video/mp4,video/quicktime" multiple onchange="adicionarImagemProgressiva(this)" class="mx-auto block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-indigo-50 file:text-indigo-700 cursor-pointer mb-4">
+                        <div class="flex justify-center items-center gap-2 mb-2"><span id="contador-imagens" class="hidden bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full"></span></div>
+                        <div id="preview-container" class="flex flex-wrap gap-3 justify-center hidden mt-4 pt-4 border-t border-gray-200"></div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-bold text-gray-700">Legenda da Publicação</label>
+                            <!-- BOTÃO DO COPYWRITER NATIVO -->
+                            <button type="button" id="btn-ia-legenda" onclick="chamarIA('legenda', 'legenda-post')" class="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold hover:bg-purple-200 transition shadow-sm border border-purple-200 flex items-center gap-1">✨ Criar com IA</button>
+                        </div>
+                        <textarea id="legenda-post" rows="4" placeholder="Legenda..." class="w-full border border-gray-300 rounded-md p-3 outline-none"></textarea>
+                    </div>
+
+                    <div class="mb-6 bg-indigo-50 border border-indigo-200 p-4 rounded-lg flex items-center justify-between">
+                        <div><h4 class="font-bold text-indigo-900 text-sm">Precisa de automatizar esta publicação?</h4></div>
+                        <button type="button" onclick="gerarIdPostagem()" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-indigo-700 transition">Gerar ID</button>
+                    </div>
+                    <div id="box-id-gerado" class="hidden mb-6 bg-green-50 border border-green-200 p-4 rounded-lg">
+                        <label class="block text-xs font-bold text-green-800 uppercase mb-1">ID Pronto:</label>
+                        <div class="flex gap-2"><input type="text" id="input-post-id-gerado" readonly class="w-full border bg-white rounded p-2 text-sm font-mono text-green-800 font-bold"><button type="button" onclick="copiarIdTelaPost()" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold">Copiar</button></div>
+                    </div>
+                    <div class="flex justify-end gap-4"><button type="button" onclick="abrirModalConfirmacao()" id="btn-publicar-principal" class="bg-green-600 text-white px-8 py-3 rounded-md font-bold hover:bg-green-700 transition shadow-md">Pré-visualizar & Publicar</button></div>
+                </div>
+            </div>
+
+            <div id="tela-automacoes" class="tela-conteudo hidden">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">Construtor Visual de Fluxos</h1>
+                <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-4xl mb-8">
+                    
+                    <form id="form-regra" onsubmit="criarRegra(event)" class="space-y-6">
+                        <div class="border-l-4 border-indigo-500 pl-4">
+                            <h3 class="font-bold text-gray-800 mb-2">1. Bloco de Disparo (Gatilho)</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Palavra-Chave</label><input type="text" id="nova-palavra" required placeholder="Ex: e-book" class="w-full border rounded-md p-2 outline-none bg-gray-50 focus:bg-white transition"></div>
+                                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">ID da Postagem</label><input type="text" id="regra-post-id" required placeholder="post_12345" class="w-full border rounded-md p-2 outline-none bg-gray-50 focus:bg-white transition"></div>
+                            </div>
+                        </div>
+
+                        <div class="border-l-4 border-orange-400 pl-4 bg-orange-50 p-4 rounded-r-lg">
+                            <h3 class="font-bold text-gray-800 mb-1">2. Bloco Condicional (Verificação)</h3>
+                            <p class="text-xs text-gray-600 mb-3">Se ativado, o robô pedirá para o utilizador seguir o perfil antes de libertar o botão do produto.</p>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <div class="relative"><input type="checkbox" id="toggle-seguidor" class="sr-only"><div class="block bg-gray-300 w-10 h-6 rounded-full transition shadow-inner"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition shadow"></div></div>
+                                <span class="text-sm font-bold text-gray-800">Exigir que o utilizador siga o perfil</span>
+                            </label>
+                            <style> input:checked ~ .block { background-color: #f97316; } input:checked ~ .dot { transform: translateX(100%); } </style>
+                        </div>
+
+                        <div class="border-l-4 border-green-500 pl-4">
+                            <h3 class="font-bold text-gray-800 mb-2">3. Bloco de Entrega (Ação)</h3>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Resposta Pública</label><input type="text" id="nova-resp-pub" required placeholder="Te enviei no direct 🚀" class="w-full border rounded-md p-2 outline-none bg-gray-50"></div>
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-xs font-bold text-gray-500 uppercase">Mensagem na DM</label>
+                                        <!-- BOTÃO DE IA NO CONSTRUTOR DE FLUXOS -->
+                                        <button type="button" id="btn-ia-dm" onclick="chamarIA('dm', 'nova-msg-dm')" class="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold hover:bg-purple-200 transition shadow-sm border border-purple-200 flex items-center gap-1">✨ Escrever com IA</button>
+                                    </div>
+                                    <input type="text" id="nova-msg-dm" required placeholder="Aqui está o material:" class="w-full border rounded-md p-2 outline-none bg-gray-50">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                <div><label class="block text-xs font-bold text-indigo-600 uppercase mb-1">Texto do Botão CTA</label><input type="text" id="novo-texto-botao" placeholder="Ex: 🛒 Baixar E-book" class="w-full border-2 border-indigo-200 rounded-md p-2 outline-none focus:border-indigo-500"></div>
+                                <div><label class="block text-xs font-bold text-indigo-600 uppercase mb-1">Link de Destino</label><input type="url" id="novo-link" required placeholder="https://pay.kiwify..." class="w-full border-2 border-indigo-200 rounded-md p-2 outline-none focus:border-indigo-500"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-4"><button type="submit" class="bg-indigo-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-indigo-700 transition shadow-lg">Salvar Novo Fluxo</button></div>
+                    </form>
+                </div>
+
+                <div class="bg-transparent max-w-4xl">
+                    <h3 class="font-bold text-gray-700 mb-4 px-1">Fluxos Ativos</h3>
+                    <div id="lista-regras"></div>
+                </div>
+            </div>
+
+            <div id="tela-leads" class="tela-conteudo hidden">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">Base de Leads</h1>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden p-6"><div id="tabela-leads"></div></div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal de Confirmação Omitido por Limite de Espaço (Simulador Mantido Intacto) -->
+    <div id="modal-confirmacao" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50 py-4">
+        <div class="flex flex-col md:flex-row gap-6 items-center w-full max-w-3xl justify-center h-full">
+            <div class="bg-white w-[350px] rounded-xl overflow-hidden shadow-2xl shrink-0 border border-gray-200 flex flex-col max-h-full">
+                <div class="flex items-center justify-between p-3 border-b border-gray-100">
+                    <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-fuchsia-600 p-[2px]"><div class="w-full h-full bg-white rounded-full flex items-center justify-center text-xs font-bold text-indigo-700">RS</div></div><span id="simulador-username" class="font-semibold text-sm text-gray-900 tracking-tight">@rogerctsales</span></div><span class="text-gray-900 font-bold tracking-widest text-lg pb-2">...</span>
+                </div>
+                <div id="simulador-media" class="w-full relative bg-gray-50 flex items-center justify-center"></div>
+                <div class="p-3">
+                    <div class="text-sm text-gray-900 max-h-32 overflow-y-auto pr-1"><span class="font-semibold mr-1 text-gray-900">@rogerctsales</span> <span id="simulador-legenda" class="text-gray-800 leading-tight"></span></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-6 shadow-xl w-[320px] shrink-0 flex flex-col gap-4">
+                <button type="button" onclick="fecharModal()" class="w-full py-2.5 rounded-lg border text-gray-700 font-semibold hover:bg-gray-100 transition">Voltar e Editar</button>
+                <button type="button" onclick="confirmarEPublicar()" id="btn-publicar-principal" class="w-full py-2.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 transition shadow-md">Confirmar e Enviar</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
